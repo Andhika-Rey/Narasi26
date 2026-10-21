@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>Panel Panitia NARASI</title>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://*.supabase.co; base-uri 'self'; form-action 'self'; object-src 'none'">
+<meta name="referrer" content="no-referrer">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;700&family=Bowlby+One&family=IBM+Plex+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/narasi.css">
+<link rel="stylesheet" href="css/admin.css">
+</head>
+<body>
+<div class="grain" aria-hidden="true"></div>
+<div class="wrap adm">
+  <header class="top">
+    <a class="brand" href="admin.html">NARASI<span>/PANITIA</span></a>
+    <div class="adm-me" id="adm-me" hidden>
+      <span class="mono muted" id="adm-who"></span>
+      <button type="button" class="btn alt btn-s" id="adm-out">Keluar</button>
+    </div>
+  </header>
+
+  <section class="win" id="login" aria-labelledby="h-login">
+    <div class="win-bar"><span class="tab"></span><span class="name">masuk.exe</span><span class="ctl" aria-hidden="true"><b>_</b><b>□</b><b>×</b></span></div>
+    <div class="win-body">
+      <h1 class="h2" id="h-login">Masuk Panitia</h1>
+      <p class="muted">Halaman ini hanya untuk panitia inti. Akun dibuat oleh pemilik proyek di Supabase.</p>
+      <form id="login-form" novalidate>
+        <div class="field"><label for="l-email">Email</label><input id="l-email" type="email" autocomplete="username" required></div>
+        <div class="field"><label for="l-pass">Kata sandi</label><input id="l-pass" type="password" autocomplete="current-password" required></div>
+        <p class="form-err" id="l-err" role="alert"></p>
+        <p><button class="btn" type="submit" id="l-btn">Masuk</button></p>
+      </form>
+    </div>
+  </section>
+
+  <div id="app" hidden>
+    <nav class="adm-tabs" id="tabs" aria-label="Menu panel"></nav>
+    <section class="win" aria-live="polite">
+      <div class="win-bar"><span class="tab"></span><span class="name" id="win-name">ringkasan.exe</span><span class="ctl" aria-hidden="true"><b>_</b><b>□</b><b>×</b></span></div>
+      <div class="win-body" id="panel"></div>
+    </section>
+  </div>
+</div>
+<script src="vendor/supabase.js"></script>
+<script src="js/config.js"></script>
+<script src="js/admin.js"></script>
+</body>
+</html>
