@@ -11,7 +11,8 @@ index.html            situs publik + bilik suara + hasil
 admin.html            panel panitia
 css/ js/ vendor/ img/ aset
 js/config.js          ISI DI SINI URL & anon key Supabase
-supabase/schema.sql   seluruh database (aman dijalankan ulang)
+supabase/schema.sql   seluruh database + penyimpanan foto (aman dijalankan ulang)
+supabase/reset.sql    hapus data uji coba (suara, calon, karya) lewat SQL Editor
 ```
 
 ## Pemasangan (±20 menit)
@@ -39,9 +40,15 @@ Unggah folder ini ke GitHub lalu hubungkan ke Cloudflare Pages / Netlify / Verce
 
 ### 4. Isi data (panel `/admin.html`)
 1. **Pemilih** → pilih kelas → tempel daftar (satu baris: `NIM` atau `NIM, Nama`) → Impor.
-2. **Karya** dan **Calon** → tambah entri dengan tautan IG/YouTube/Drive (harus diawali `http://` atau `https://`).
+2. **Karya** → isi nama, unggah foto (boleh banyak; otomatis diperkecil), tempel tautan **YouTube** untuk video (diputar langsung di situs; unggah videonya ke YouTube dulu, mode *Unlisted* cukup). **Calon** → unggah foto Ketua dan Wakil; otomatis dipotong ke rasio 4:5 dari tengah gambar. Centang *Tayang* agar tampil dan bisa dipilih.
 3. **Jadwal** → cek waktu dalam WIB.
 4. Uji coba dengan NIM palsu sebelum 26 Okt, lalu hapus suara uji lewat SQL Editor bila ada.
+
+## Memperbarui dari versi sebelumnya
+Jalankan ulang seluruh `supabase/schema.sql` di SQL Editor (aman, tidak menghapus data). Ini menambah kolom foto dan bucket penyimpanan `narasi` (publik untuk dilihat; hanya admin yang boleh mengunggah). Lalu push file situs terbaru dan refresh keras.
+
+## Menghapus data uji coba
+Buka `supabase/reset.sql`, jalankan blok yang dibutuhkan (A: semua suara, B: calon, C: karya). Admin, jadwal, dan daftar pemilih tidak ikut terhapus. Berkas foto bekas uji bersihkan lewat Supabase > Storage > `narasi`. Sebelum membuka voting resmi, jalankan blok A untuk memastikan suara kosong.
 
 ## Cara kerja & batasan (baca ini)
 

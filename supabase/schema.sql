@@ -60,6 +60,16 @@ create table if not exists calon (
   dibuat           timestamptz not null default now()
 );
 
+-- Kolom foto (v2). Yang disimpan hanya PATH berkas di bucket "narasi", bukan URL.
+alter table karya add column if not exists foto        text[] not null default '{}';
+alter table calon add column if not exists foto_ketua  text;
+alter table calon add column if not exists foto_wakil  text;
+alter table karya drop constraint if exists karya_foto_path;
+alter table karya add  constraint karya_foto_path check (array_to_string(foto, ',') ~ '^([a-z0-9_-]+/[a-z0-9-]+\.(jpg|jpeg|png|webp)(,[a-z0-9_-]+/[a-z0-9-]+\.(jpg|jpeg|png|webp))*)?$');
+alter table calon drop constraint if exists calon_foto_path;
+alter table calon add  constraint calon_foto_path check (
+  (foto_ketua is null or foto_ketua ~ '^[a-z0-9_-]+/[a-z0-9-]+\.(jpg|jpeg|png|webp)$') and (foto_wakil is null or foto_wakil ~ '^[a-z0-9_-]+/[a-z0-9-]+\.(jpg|jpeg|png|webp)$'));
+
 create table if not exists pengaturan (
   id        int primary key default 1 check (id = 1),
   buka_at   timestamptz not null default '2026-10-26 00:00:00+07',
@@ -204,12 +214,13 @@ language sql stable security definer set search_path = public, pg_temp as $$
     'karya', coalesce((
       select jsonb_agg(jsonb_build_object(
         'id', id, 'kelompok', kelompok, 'nama', nama_angkatan, 'slogan', slogan,
-        'filosofi', filosofi, 'tautan_video', tautan_video, 'tautan_paket', tautan_paket)
+        'filosofi', filosofi, 'tautan_video', tautan_video, 'tautan_paket', tautan_paket, 'foto', to_jsonb(foto))
         order by urut, dibuat)
       from karya where tayang), '[]'::jsonb),
     'calon', coalesce((
       select jsonb_agg(jsonb_build_object(
-        'id', id, 'ketua', ketua, 'wakil', wakil, 'visi', visi, 'tautan_kampanye', tautan_kampanye)
+        'id', id, 'ketua', ketua, 'wakil', wakil, 'visi', visi, 'tautan_kampanye', tautan_kampanye,
+        'foto_ketua', foto_ketua, 'foto_wakil', foto_wakil)
         order by urut, dibuat)
       from calon where tayang), '[]'::jsonb)
   )
@@ -568,3 +579,30 @@ grant execute on function admin_hapus_pemilih(text)               to authenticat
 grant execute on function admin_buka_kunci(text)                  to authenticated;
 grant execute on function admin_atur(timestamptz, timestamptz, timestamptz, boolean) to authenticated;
 grant execute on function auditor_suara(text)                     to authenticated;
+
+-- =====================================================================
+-- 7. PENYIMPANAN FOTO (Supabase Storage, bucket publik "narasi")
+--    Siapa pun boleh MELIHAT foto; hanya admin yang boleh mengunggah/menghapus.
+--    Dilewati otomatis bila skema storage tidak ada (mis. Postgres biasa).
+-- =====================================================================
+do $$
+begin
+  if to_regclass('storage.objects') is null then
+    raise notice 'Skema storage tidak ditemukan, bagian foto dilewati.';
+    return;
+  end if;
+  insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+  values ('narasi', 'narasi', true, 3145728, array['image/jpeg','image/png','image/webp'])
+  on conflict (id) do update set public = true, file_size_limit = 3145728,
+    allowed_mime_types = array['image/jpeg','image/png','image/webp'];
+
+  drop policy if exists narasi_admin_tulis  on storage.objects;
+  drop policy if exists narasi_admin_ubah   on storage.objects;
+  drop policy if exists narasi_admin_hapus  on storage.objects;
+  create policy narasi_admin_tulis on storage.objects for insert to authenticated
+    with check (bucket_id = 'narasi' and public.is_admin());
+  create policy narasi_admin_ubah  on storage.objects for update to authenticated
+    using (bucket_id = 'narasi' and public.is_admin()) with check (bucket_id = 'narasi' and public.is_admin());
+  create policy narasi_admin_hapus on storage.objects for delete to authenticated
+    using (bucket_id = 'narasi' and public.is_admin());
+end $$;

@@ -34,3 +34,15 @@ textarea.adm-input { min-height: 160px; font-family: var(--font-mono); resize: v
 .pill.on { background: var(--yellow); color: #29221E; }
 .json { font: 400 .78rem/1.4 var(--font-mono); color: var(--muted); max-width: 60ch; overflow-wrap: anywhere; }
 .search { max-width: 360px; margin: 0 0 12px; }
+
+/* unggah foto */
+.up { display: grid; gap: 8px; }
+.up-file { max-width: 100%; }
+.up-hint, .up-info { margin: 0; font-size: .85rem; }
+.up-strip { display: flex; flex-wrap: wrap; gap: 10px; }
+.up-item { margin: 0; position: relative; width: 120px; border: 2px solid var(--edge); border-radius: 4px; overflow: hidden; background: var(--bg-2); }
+.up-item img { display: block; width: 100%; aspect-ratio: 1 / 1; object-fit: cover; }
+.up-item.up-45 img { aspect-ratio: 4 / 5; }
+.up-x { position: absolute; right: 4px; bottom: 4px; padding: 2px 8px; border: 2px solid var(--edge); border-radius: 4px; background: var(--yellow); color: #29221E; font: 700 .7rem var(--font-mono); cursor: pointer; }
+.tbl-img { display: block; width: 44px; height: 44px; object-fit: cover; border: 1.5px solid var(--edge); border-radius: 3px; }
+.tbl-pair { display: flex; gap: 6px; align-items: center; }

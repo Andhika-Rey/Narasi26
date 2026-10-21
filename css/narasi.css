@@ -281,3 +281,35 @@ fieldset.surat:disabled { opacity: .7; }
 .shot button:hover { transform: none; box-shadow: 3px 3px 0 var(--shadow); }
 .shot img { transition: transform .15s; }
 .shot button:hover img { transform: scale(1.03); }
+
+/* ---------- Foto karya, potret calon (4:5), video YouTube ---------- */
+.fstrip { display: grid; grid-template-columns: repeat(auto-fill, minmax(88px, 1fr)); gap: 8px; margin: 10px 0; }
+.fthumb { position: relative; padding: 0; margin: 0; border: 2px solid var(--edge); border-radius: 4px; background: var(--bg-2); cursor: zoom-in; overflow: hidden; box-shadow: 3px 3px 0 var(--shadow); }
+.fthumb img { display: block; width: 100%; aspect-ratio: 1 / 1; object-fit: cover; transition: transform .15s; }
+.fthumb:hover img { transform: scale(1.04); }
+.fthumb::before { content: ""; position: absolute; inset: -4px; }
+.fstrip:only-child .fthumb, .fstrip .fthumb:only-child { grid-column: 1 / -1; }
+.fstrip .fthumb:only-child img { aspect-ratio: 16 / 10; }
+
+.cards-calon { grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); }
+.pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 6px 0 12px; }
+.pot { margin: 0; min-width: 0; }
+.pot button { display: block; width: 100%; padding: 0; margin: 0; border: 2px solid var(--edge); border-radius: 4px; background: var(--bg-2); cursor: zoom-in; overflow: hidden; box-shadow: 4px 4px 0 var(--shadow); }
+.pot img { display: block; width: 100%; aspect-ratio: 4 / 5; object-fit: cover; }
+.pair-s .pot img { border: 2px solid var(--edge); border-radius: 4px; }
+.pot-kosong { display: grid; place-items: center; aspect-ratio: 4 / 5; border: 2px dashed var(--edge); border-radius: 4px; color: var(--muted); font: 500 .8rem var(--font-mono); text-align: center; }
+.pot figcaption { margin-top: 6px; font-size: .75rem; color: var(--muted); overflow-wrap: anywhere; }
+.pot figcaption b { color: var(--accent-text); font-weight: 700; }
+.pair-s { max-width: 260px; margin: 2px 0 6px; gap: 6px; }
+.pair-s .pot figcaption { display: none; }
+
+.opt-img { width: 100%; max-width: 220px; aspect-ratio: 16 / 10; object-fit: cover; border: 2px solid var(--edge); border-radius: 4px; margin-bottom: 4px; }
+
+.yt-wrap { margin-top: 10px; }
+.yt { position: relative; aspect-ratio: 16 / 9; border: 2px solid var(--edge); border-radius: 4px; background: #15100D; overflow: hidden; box-shadow: 4px 4px 0 var(--shadow); margin-bottom: 8px; }
+.yt iframe, .yt-play { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+.yt-play { padding: 0; margin: 0; background: none; cursor: pointer; }
+.yt-play img { width: 100%; height: 100%; object-fit: cover; opacity: .8; display: block; }
+.yt-btn { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); padding: 10px 18px; border: 2px solid var(--edge); border-radius: 4px; background: var(--yellow); color: #29221E; font: 700 .9rem var(--font-mono); box-shadow: 3px 3px 0 var(--shadow); }
+.yt-play:hover .yt-btn { transform: translate(-50%, -50%) scale(1.05); }
+@media (max-width: 480px) { .pair { gap: 8px; } }

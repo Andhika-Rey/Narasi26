@@ -251,6 +251,71 @@
     });
   }
 
+  /* ---------- Unggah foto ---------- */
+  var BUCKET = "narasi";
+  function fotoUrl(path) { return CFG.SUPABASE_URL + "/storage/v1/object/public/" + BUCKET + "/" + path; }
+  /* Skala/pangkas di browser sebelum diunggah: rasio [4,5] = potong tengah 960x1200, selain itu sisi terpanjang 1600. */
+  function kompres(file, rasio) {
+    return new Promise(function (ok, gagal) {
+      if (!/^image\/(jpeg|png|webp)$/.test(file.type)) return gagal(new Error("Berkas harus JPG, PNG, atau WebP."));
+      if (file.size > 25 * 1024 * 1024) return gagal(new Error("Berkas terlalu besar (maks 25 MB)."));
+      var url = URL.createObjectURL(file), img = new Image();
+      img.onload = function () {
+        URL.revokeObjectURL(url);
+        var sw = img.naturalWidth, sh = img.naturalHeight, sx = 0, sy = 0, cw, ch;
+        if (rasio) {
+          cw = 960; ch = 1200;
+          var target = rasio[0] / rasio[1];
+          if (sw / sh > target) { var nw = Math.round(sh * target); sx = Math.round((sw - nw) / 2); sw = nw; }
+          else { var nh = Math.round(sw / target); sy = Math.round((sh - nh) / 2); sh = nh; }
+        } else {
+          var k = Math.min(1, 1600 / Math.max(sw, sh)); cw = Math.round(sw * k); ch = Math.round(sh * k);
+        }
+        var cv = document.createElement("canvas"); cv.width = cw; cv.height = ch;
+        var cx = cv.getContext("2d"); cx.fillStyle = "#fff"; cx.fillRect(0, 0, cw, ch);
+        cx.drawImage(img, sx, sy, sw, sh, 0, 0, cw, ch);
+        cv.toBlob(function (b) { b ? ok(b) : gagal(new Error("Gagal memproses gambar.")); }, "image/jpeg", 0.86);
+      };
+      img.onerror = function () { URL.revokeObjectURL(url); gagal(new Error("Berkas bukan gambar yang valid.")); };
+      img.src = url;
+    });
+  }
+  function uploader(c, folder) {
+    var paths = [], busy = 0, onchange = function () {};
+    var strip = h("div", { class: "up-strip" });
+    var info = h("p", { class: "muted up-info", role: "status" });
+    var inp = h("input", { type: "file", accept: "image/jpeg,image/png,image/webp", id: "f-" + c.k, multiple: !!c.multi, class: "up-file" });
+    function gambar() {
+      clear(strip);
+      paths.forEach(function (pth, i) {
+        var rm = h("button", { type: "button", class: "up-x", text: "Hapus", "aria-label": "Hapus foto " + (i + 1), onclick: function () { paths.splice(i, 1); gambar(); } });
+        strip.appendChild(h("figure", { class: "up-item" + (c.rasio ? " up-45" : "") }, [h("img", { src: fotoUrl(pth), alt: "Foto " + (i + 1) }), rm]));
+      });
+    }
+    inp.addEventListener("change", function () {
+      var files = [].slice.call(inp.files || []); inp.value = "";
+      if (!files.length) return;
+      if (!c.multi) paths = [];
+      files.forEach(function (f) {
+        busy++; info.textContent = "Mengunggah " + busy + " foto..."; info.className = "muted up-info";
+        kompres(f, c.rasio).then(function (blob) {
+          var path = folder + "/" + (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(36).slice(2)) + ".jpg";
+          return sb.storage.from(BUCKET).upload(path, blob, { contentType: "image/jpeg", cacheControl: "31536000" }).then(function (r) {
+            if (r.error) throw r.error; paths.push(path); gambar();
+          });
+        }).catch(function (e) { info.textContent = "Gagal: " + (e && e.message ? e.message : e); info.className = "form-err up-info"; })
+          .then(function () { busy--; if (!busy && info.className.indexOf("form-err") < 0) info.textContent = paths.length ? paths.length + " foto siap." : ""; });
+      });
+    });
+    var el = h("div", { class: "up" }, [inp, h("p", { class: "muted up-hint", text: c.rasio ? "Otomatis dipotong ke 4:5 (potret), dari tengah gambar." : "Boleh lebih dari satu. Ukuran diperkecil otomatis." }), strip, info]);
+    return {
+      el: el,
+      sibuk: function () { return busy > 0; },
+      ambil: function () { return c.multi ? paths.slice() : (paths[0] || null); },
+      isi: function (v) { paths = v ? [].concat(v) : []; info.textContent = ""; info.className = "muted up-info"; gambar(); }
+    };
+  }
+
   /* ---------- Karya & Calon (CRUD generik) ---------- */
   function crud(masihAktif, cfg) {
     return Promise.resolve(sb.from(cfg.tabel).select("*").order("urut", { ascending: true }).order("dibuat", { ascending: true })).then(function (r) {
@@ -262,7 +327,13 @@
       panel.appendChild(h("p", { class: "muted", text: cfg.bantuan }));
       var form = h("form", { class: "adm-form", novalidate: true });
       var fields = {};
+      var ups = {};
       cfg.kolom.forEach(function (c) {
+        if (c.img) {
+          ups[c.k] = uploader(c, cfg.tabel);
+          form.appendChild(h("div", { class: "field full" }, [h("label", { for: "f-" + c.k, text: c.t }), ups[c.k].el]));
+          return;
+        }
         var inp = c.area ? h("textarea", { class: "adm-input", id: "f-" + c.k, rows: "3" }) : h("input", { class: "adm-input", id: "f-" + c.k, type: c.num ? "number" : (c.url ? "url" : "text"), placeholder: c.ph || "" });
         fields[c.k] = inp;
         form.appendChild(h("div", { class: "field" + (c.full ? " full" : "") }, [h("label", { for: "f-" + c.k, text: c.t + (c.req ? " *" : "") }), inp]));
@@ -273,12 +344,15 @@
       var simpan = h("button", { type: "submit", class: "btn", text: "Tambah" });
       var batal = h("button", { type: "button", class: "btn alt", text: "Batal edit", hidden: true, onclick: function () { reset(); } });
       form.appendChild(h("div", { class: "full row" }, [simpan, batal, msg]));
-      function reset() { edit = null; form.reset(); simpan.textContent = "Tambah"; batal.hidden = true; pesan(msg, ""); }
+      function reset() { edit = null; form.reset(); Object.keys(ups).forEach(function (k) { ups[k].isi(null); }); simpan.textContent = "Tambah"; batal.hidden = true; pesan(msg, ""); }
       form.addEventListener("submit", function (ev) {
         ev.preventDefault();
         var data = { tayang: tayang.checked };
+        for (var uk in ups) { if (ups[uk].sibuk()) { pesan(msg, "Tunggu sampai unggahan foto selesai."); return; } }
         for (var i = 0; i < cfg.kolom.length; i++) {
-          var c = cfg.kolom[i], v = fields[c.k].value.trim();
+          var c = cfg.kolom[i];
+          if (c.img) { data[c.k] = ups[c.k].ambil(); continue; }
+          var v = fields[c.k].value.trim();
           if (c.req && !v) { pesan(msg, c.t + " wajib diisi."); fields[c.k].focus(); return; }
           if (c.url && v && !/^https?:\/\//i.test(v)) { pesan(msg, c.t + " harus diawali http:// atau https://"); fields[c.k].focus(); return; }
           data[c.k] = c.num ? (parseInt(v, 10) || 0) : (v || null);
@@ -297,8 +371,8 @@
       panel.appendChild(tabel([{ t: "Urut", num: true }].concat(cfg.tampil.map(function (c) { return { t: c.t, wrap: true }; })).concat([{ t: "Status" }, { t: "" }]),
         rows.map(function (row) {
           var ubah = h("button", { type: "button", class: "btn alt btn-s", text: "Edit", onclick: function () {
-            edit = row.id; cfg.kolom.forEach(function (c) { fields[c.k].value = row[c.k] == null ? "" : row[c.k]; });
-            tayang.checked = !!row.tayang; simpan.textContent = "Simpan perubahan"; batal.hidden = false; form.scrollIntoView({ behavior: "smooth", block: "start" }); fields[cfg.kolom[0].k].focus();
+            edit = row.id; cfg.kolom.forEach(function (c) { if (c.img) ups[c.k].isi(row[c.k]); else fields[c.k].value = row[c.k] == null ? "" : row[c.k]; });
+            tayang.checked = !!row.tayang; simpan.textContent = "Simpan perubahan"; batal.hidden = false; form.scrollIntoView({ behavior: "smooth", block: "start" }); (fields[cfg.kolom[0].k] || { focus: function () {} }).focus();
           } });
           var sw = h("button", { type: "button", class: "btn alt btn-s", text: row.tayang ? "Sembunyikan" : "Tayangkan", onclick: function () {
             Promise.resolve(sb.from(cfg.tabel).update({ tayang: !row.tayang }).eq("id", row.id)).then(function (x) { if (x.error) pesan(msg, galat(x.error)); else buka(TAB); });
@@ -315,31 +389,34 @@
   function vKarya(a) {
     return crud(a, {
       tabel: "karya", judul: "Karya Sayembara",
-      bantuan: "Satu baris = satu paket identitas dari satu kelompok. Tautan video dan paket bisa ke Instagram, YouTube, atau Google Drive. Hanya karya yang Tayang yang tampil dan bisa dipilih.",
+      bantuan: "Satu baris = satu paket identitas dari satu kelompok. Foto (logo, bendera, dll) diunggah langsung dan tampil di situs. Video: unggah dulu ke YouTube lalu tempel tautannya, video akan bisa diputar di situs. Hanya karya yang Tayang yang tampil dan bisa dipilih.",
       kolom: [
         { k: "kelompok", t: "Kelompok", req: true, ph: "Kelompok 1" },
         { k: "nama_angkatan", t: "Nama angkatan", req: true },
         { k: "slogan", t: "Slogan", full: true },
         { k: "filosofi", t: "Filosofi singkat", area: true, full: true },
-        { k: "tautan_video", t: "Tautan video", url: true, ph: "https://" },
-        { k: "tautan_paket", t: "Tautan paket karya", url: true, ph: "https://" },
+        { k: "foto", t: "Foto karya (logo, bendera, dll)", img: true, multi: true },
+        { k: "tautan_video", t: "Tautan video YouTube", url: true, ph: "https://www.youtube.com/watch?v=..." },
+        { k: "tautan_paket", t: "Tautan paket karya (opsional: Drive/IG)", url: true, ph: "https://" },
         { k: "urut", t: "Urutan tampil", num: true, ph: "0" }
       ],
-      tampil: [{ t: "Kelompok", f: function (r) { return r.kelompok; } }, { t: "Nama", f: function (r) { return r.nama_angkatan; } }, { t: "Slogan", f: function (r) { return r.slogan || ""; } }]
+      tampil: [{ t: "Kelompok", f: function (r) { return r.kelompok; } }, { t: "Nama", f: function (r) { return r.nama_angkatan; } }, { t: "Foto", f: function (r) { return (r.foto || []).length ? h("img", { class: "tbl-img", src: fotoUrl(r.foto[0]), alt: "" }) : "–"; } }, { t: "Video", f: function (r) { return r.tautan_video ? "ya" : "–"; } }]
     });
   }
   function vCalon(a) {
     return crud(a, {
       tabel: "calon", judul: "Pasangan Calon",
-      bantuan: "Satu baris = satu pasangan Ketua dan Wakil. Hanya calon yang Tayang yang tampil dan bisa dipilih.",
+      bantuan: "Satu baris = satu pasangan Ketua dan Wakil. Foto masing-masing otomatis dipotong ke 4:5. Hanya calon yang Tayang yang tampil dan bisa dipilih.",
       kolom: [
         { k: "ketua", t: "Calon Ketua", req: true },
         { k: "wakil", t: "Calon Wakil Ketua", req: true },
+        { k: "foto_ketua", t: "Foto Calon Ketua (4:5)", img: true, rasio: [4, 5] },
+        { k: "foto_wakil", t: "Foto Calon Wakil Ketua (4:5)", img: true, rasio: [4, 5] },
         { k: "visi", t: "Visi singkat", area: true, full: true },
         { k: "tautan_kampanye", t: "Tautan video kampanye", url: true, ph: "https://" },
         { k: "urut", t: "Urutan tampil", num: true, ph: "0" }
       ],
-      tampil: [{ t: "Pasangan", f: function (r) { return r.ketua + " & " + r.wakil; } }, { t: "Visi", f: function (r) { return r.visi || ""; } }]
+      tampil: [{ t: "Pasangan", f: function (r) { return r.ketua + " & " + r.wakil; } }, { t: "Foto", f: function (r) { return h("span", { class: "tbl-pair" }, [r.foto_ketua ? h("img", { class: "tbl-img", src: fotoUrl(r.foto_ketua), alt: "" }) : "–", r.foto_wakil ? h("img", { class: "tbl-img", src: fotoUrl(r.foto_wakil), alt: "" }) : "–"]); } }, { t: "Visi", f: function (r) { return r.visi || ""; } }]
     });
   }
 

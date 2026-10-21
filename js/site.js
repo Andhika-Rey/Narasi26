@@ -41,6 +41,16 @@
   var pad = function (n) { return String(n).padStart(2, "0"); };
   var T = function (s) { return new Date(s).getTime(); };
   var safeUrl = function (u) { return /^https?:\/\//i.test(u || "") ? u : ""; };
+  /* Foto: yang disimpan di database hanya path di bucket "narasi"; URL disusun di sini. */
+  var fotoUrl = function (path) {
+    var base = (window.NARASI_CONFIG || {}).SUPABASE_URL || "";
+    return base && /^[a-z0-9_-]+\/[a-z0-9-]+\.(jpg|jpeg|png|webp)$/.test(path || "") ? base + "/storage/v1/object/public/narasi/" + path : "";
+  };
+  /* ID video YouTube dari berbagai bentuk tautan; null bila bukan YouTube. */
+  var ytId = function (u) {
+    var m = String(u || "").match(/^https?:\/\/(?:www\.|m\.)?(?:youtube\.com\/(?:watch\?(?:[^#]*&)?v=|shorts\/|embed\/|live\/)|youtu\.be\/)([A-Za-z0-9_-]{11})(?![A-Za-z0-9_-])/i);
+    return m ? m[1] : null;
+  };
 
   // Pembuat elemen: semua teks lewat textContent, tidak pernah innerHTML.
   function h(tag, props, kids) {
@@ -155,24 +165,69 @@
       ent.appendChild(h("div", { class: "cards" }, st.karya.map(function (k) {
         return h("article", { class: "cell" }, [
           h("span", { class: "k mono", text: k.kelompok }), h("h3", { text: k.nama }),
+          fotoStrip(k.foto, k.nama),
           k.slogan ? h("p", { text: "“" + k.slogan + "”" }) : null,
           k.filosofi ? h("p", { class: "muted", style: "margin-top:6px", text: k.filosofi }) : null,
-          linkBtn(k.tautan_video, "Tonton video"), linkBtn(k.tautan_paket, "Lihat paket karya")
+          videoBlok(k.tautan_video, "Tonton video"), linkBtn(k.tautan_paket, "Lihat paket karya")
         ]);
       })));
     } else {
       ent.appendChild(nosignal("Belum ada sinyal", "Paket nama, logo, slogan, bendera, dan video muncul di sini saat dipublikasikan."));
     }
     if (st.calon.length) {
-      can.appendChild(h("div", { class: "cards" }, st.calon.map(function (c) {
+      can.appendChild(h("div", { class: "cards cards-calon" }, st.calon.map(function (c) {
         return h("article", { class: "cell" }, [
-          h("span", { class: "k mono", text: "Pasangan calon" }), h("h3", { text: c.ketua + " & " + c.wakil }),
-          c.visi ? h("p", { text: c.visi }) : null, linkBtn(c.tautan_kampanye, "Lihat kampanye")
+          h("span", { class: "k mono", text: "Pasangan calon" }),
+          pasangan(c, false),
+          h("h3", { text: c.ketua + " & " + c.wakil }),
+          c.visi ? h("p", { text: c.visi }) : null, videoBlok(c.tautan_kampanye, "Lihat kampanye")
         ]);
       })));
     } else {
       can.appendChild(nosignal("Menunggu pendaftar", "Pasangan calon diumumkan bersamaan dengan publikasi karya."));
     }
+  }
+
+  /* Deret foto karya; klik membuka lightbox. */
+  function fotoStrip(list, alt) {
+    var urls = (list || []).map(fotoUrl).filter(Boolean);
+    if (!urls.length) return null;
+    return h("div", { class: "fstrip" }, urls.map(function (u, i) {
+      var img = h("img", { src: u, alt: alt + ", foto " + (i + 1), loading: "lazy", decoding: "async" });
+      var b = h("button", { type: "button", class: "fthumb", "aria-label": "Perbesar foto " + (i + 1) + " " + alt, onclick: function () { bukaLb(u, alt, alt, b); } }, img);
+      return b;
+    }));
+  }
+  /* Pasangan calon: dua potret 4:5. kecil = versi ringkas untuk surat suara. */
+  function pasangan(c, kecil) {
+    var ku = fotoUrl(c.foto_ketua), wu = fotoUrl(c.foto_wakil);
+    if (!ku && !wu) return null;
+    function pot(u, peran, nama) {
+      var box = h("figure", { class: "pot" });
+      if (u) {
+        var img = h("img", { src: u, alt: peran + ": " + nama, loading: "lazy", decoding: "async" });
+        if (kecil) box.appendChild(img);
+        else { var b = h("button", { type: "button", "aria-label": "Perbesar foto " + peran + " " + nama, onclick: function () { bukaLb(u, peran + ": " + nama, peran + " · " + nama, b); } }, img); box.appendChild(b); }
+      } else box.appendChild(h("div", { class: "pot-kosong", text: "Foto menyusul" }));
+      box.appendChild(h("figcaption", { class: "mono" }, [h("b", { text: peran }), " " + nama]));
+      return box;
+    }
+    return h("div", { class: "pair" + (kecil ? " pair-s" : "") }, [pot(ku, "Ketua", c.ketua), pot(wu, "Wakil", c.wakil)]);
+  }
+  /* Video: YouTube diputar di halaman (iframe dibuat saat diklik); lainnya jadi tautan. */
+  function videoBlok(u, label) {
+    var id = ytId(u);
+    if (!id) return linkBtn(u, label);
+    var box = h("div", { class: "yt" });
+    var play = h("button", { type: "button", class: "yt-play", "aria-label": "Putar video" }, [
+      h("img", { src: "https://i.ytimg.com/vi/" + id + "/hqdefault.jpg", alt: "", loading: "lazy" }),
+      h("span", { class: "yt-btn", text: "▶ Putar" })]);
+    play.addEventListener("click", function () {
+      clear(box);
+      box.appendChild(h("iframe", { src: "https://www.youtube-nocookie.com/embed/" + id + "?autoplay=1&rel=0", title: "Video", allow: "autoplay; encrypted-media; picture-in-picture; fullscreen", allowfullscreen: true, referrerpolicy: "strict-origin-when-cross-origin" }));
+    });
+    box.appendChild(play);
+    return h("div", { class: "yt-wrap" }, [box, linkBtn(u, "Buka di YouTube")]);
   }
 
   /* ===================== Bilik suara ===================== */
@@ -269,13 +324,14 @@
     return form;
   }
 
-  function opsi(name, item, judul, sub, deskripsi, tautan) {
+  function opsi(name, item, judul, sub, deskripsi, tautan, visual) {
     var input = h("input", { type: "radio", name: name, value: item.id, onchange: function () { V.pilih[name] = item.id; $("v-err2").textContent = ""; } });
     if (V.pilih[name] === item.id) input.checked = true;
     var links = h("span", { class: "opt-links" }, tautan.map(function (t) {
       var u = safeUrl(t[0]); return u ? h("a", { href: u, target: "_blank", rel: "noopener noreferrer", text: t[1] }) : null;
     }));
     return h("label", { class: "opt" }, [input, h("span", { class: "opt-body" }, [
+      visual || null,
       h("b", { text: judul }), sub ? h("span", { class: "mono muted", text: sub }) : null,
       deskripsi ? h("span", { class: "opt-desc", text: deskripsi }) : null, links])]);
   }
@@ -302,10 +358,10 @@
     var ganti = h("button", { class: "btn alt", type: "button", text: "Ganti NIM", onclick: function () { resetVote(); renderVote(); } });
     root.appendChild(h("form", { id: "ballot-form", novalidate: true, onsubmit: function (e) { e.preventDefault(); } }, [
       fieldsetSurat("Surat suara 1 · Paket identitas angkatan", "karya", V.sudah.sayembara, V.urut.karya, function (k) {
-        return opsi("karya", k, k.nama, k.kelompok, k.slogan ? "“" + k.slogan + "”" : "", [[k.tautan_video, "Tonton video"], [k.tautan_paket, "Lihat paket"]]);
+        return opsi("karya", k, k.nama, k.kelompok, k.slogan ? "“" + k.slogan + "”" : "", [[k.tautan_video, "Tonton video"], [k.tautan_paket, "Lihat paket"]], k.foto && k.foto[0] && fotoUrl(k.foto[0]) ? h("img", { class: "opt-img", src: fotoUrl(k.foto[0]), alt: "", loading: "lazy" }) : null);
       }),
       fieldsetSurat("Surat suara 2 · Ketua dan Wakil Ketua", "calon", V.sudah.ketua, V.urut.calon, function (c) {
-        return opsi("calon", c, c.ketua + " & " + c.wakil, "", c.visi || "", [[c.tautan_kampanye, "Lihat kampanye"]]);
+        return opsi("calon", c, c.ketua + " & " + c.wakil, "", c.visi || "", [[c.tautan_kampanye, "Lihat kampanye"]], pasangan(c, true));
       }),
       err,
       h("p", { class: "row" }, [ada ? lanjut : null, ganti])
@@ -432,15 +488,16 @@
   var lb = null, lastBtn = null;
   function closeLb() { if (lb) { lb.remove(); lb = null; document.removeEventListener("keydown", onKey); if (lastBtn) lastBtn.focus(); } }
   function onKey(e) { if (e.key === "Escape") closeLb(); }
+  function bukaLb(src, alt, cap, btn) {
+    closeLb(); lastBtn = btn;
+    var img = h("img", { src: src, alt: alt });
+    var x = h("button", { type: "button", class: "x", text: "Tutup ×" });
+    lb = h("div", { class: "lb", role: "dialog", "aria-modal": "true", "aria-label": "Foto", onclick: closeLb }, [
+      x, h("figure", null, [img, h("figcaption", { class: "mono", text: cap || "" })])]);
+    document.body.appendChild(lb); x.focus(); document.addEventListener("keydown", onKey);
+  }
   document.querySelectorAll(".shot button").forEach(function (b) {
-    b.addEventListener("click", function () {
-      lastBtn = b;
-      var img = h("img", { src: b.dataset.full, alt: b.querySelector("img").alt });
-      var x = h("button", { type: "button", class: "x", text: "Tutup ×" });
-      lb = h("div", { class: "lb", role: "dialog", "aria-modal": "true", "aria-label": "Foto dokumentasi", onclick: closeLb }, [
-        x, h("figure", null, [img, h("figcaption", { class: "mono", text: b.dataset.cap || "" })])]);
-      document.body.appendChild(lb); x.focus(); document.addEventListener("keydown", onKey);
-    });
+    b.addEventListener("click", function () { bukaLb(b.dataset.full, b.querySelector("img").alt, b.dataset.cap, b); });
   });
 
   /* ===================== Mulai ===================== */
