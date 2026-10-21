@@ -5,6 +5,7 @@
   "use strict";
 
   var CFG = window.NARASI_CONFIG || {};
+  if (CFG.SUPABASE_URL) CFG.SUPABASE_URL = String(CFG.SUPABASE_URL).trim().replace(/\/(rest|auth)\/v1.*$/, "").replace(/\/+$/, "");
   var $ = function (id) { return document.getElementById(id); };
   var panel = $("panel");
 

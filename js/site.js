@@ -76,6 +76,7 @@
 
   /* ===================== Backend ===================== */
   var CFG = window.NARASI_CONFIG || {};
+  if (CFG.SUPABASE_URL) CFG.SUPABASE_URL = String(CFG.SUPABASE_URL).trim().replace(/\/(rest|auth)\/v1.*$/, "").replace(/\/+$/, "");
   var sb = null;
   try {
     if (window.supabase && CFG.SUPABASE_URL && CFG.SUPABASE_ANON_KEY) {
