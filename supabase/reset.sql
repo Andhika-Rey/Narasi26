@@ -61,5 +61,10 @@ commit;
 -- delete from suara_karya where nim = '2026001';
 -- delete from suara_calon where nim = '2026001';
 
+-- ---------------------------------------------------------------------
+-- F. (Pilihan) Kosongkan foto dokumentasi Home (kembali ke 4 foto bawaan)
+-- ---------------------------------------------------------------------
+-- delete from dokumentasi;
+
 -- Catatan: berkas foto di Storage tidak ikut terhapus. Bersihkan lewat
 -- Supabase > Storage > bucket "narasi" (SQL tidak diizinkan menghapus berkas).

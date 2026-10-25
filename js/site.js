@@ -1,5 +1,6 @@
-/* NARASI 2026 · situs publik
-   Konten statis (timeline, rundown) ada di blok CONTENT. Data karya, calon,
+/* NARASI 2026 · situs publik (multi halaman: Home, About, Voting, Kontak)
+   Satu berkas untuk semua halaman; tiap modul hanya berjalan bila elemennya ada.
+   Konten statis (timeline) ada di blok CONTENT. Data karya, calon, dokumentasi,
    jadwal voting, dan hasil selalu diambil dari server (Supabase). */
 (function () {
   "use strict";
@@ -7,43 +8,42 @@
   /* ===================== Konten statis ===================== */
   var CONTENT = {
     instagram: "narasi2026.id",
-    event: "2026-11-13T09:00:00+07:00",
+    event: "2026-11-13T13:00:00+07:00",
+    eventDate: "2026-11-13",
     start: "2026-10-12T00:00:00+07:00",
     timeline: [
       { from: "2026-10-12", to: "2026-10-16", title: "Pendaftaran", detail: "Peserta sayembara identitas dan pasangan calon Ketua dan Wakil." },
       { from: "2026-10-19", to: "2026-10-23", title: "Pengumpulan karya dan visi misi", detail: "Paket identitas dan penyampaian visi misi pasangan calon." },
-      { from: "2026-10-26", to: "2026-10-26", title: "Publikasi", detail: "Karya sayembara dan pasangan calon tayang di Instagram dan di halaman ini." },
+      { from: "2026-10-26", to: "2026-10-26", title: "Publikasi", detail: "Karya sayembara dan pasangan calon tayang di Instagram dan di halaman Voting." },
       { from: "2026-10-26", to: "2026-10-30", title: "Kampanye dan voting", detail: "Seluruh mahasiswa Bisnis Digital 2026 memberikan suara." },
       { from: "2026-11-02", to: "2026-11-06", title: "Rekapitulasi dan verifikasi", detail: "Panitia memeriksa data dan menyiapkan puncak acara." },
       { from: "2026-11-09", to: "2026-11-12", title: "Finalisasi persiapan", detail: "Seminar, perlengkapan, dan koordinasi hari-H." },
-      { from: "2026-11-13", to: "2026-11-13", title: "Puncak acara NARASI", detail: "Seminar, pengumuman Ketua dan Wakil, serta pemenang sayembara." }
-    ],
-    rundown: [
-      ["08.30–09.00", "Registrasi dan persiapan"],
-      ["09.00–09.10", "Pembukaan"],
-      ["09.10–09.30", "Sambutan"],
-      ["09.30–09.55", "Narasumber 1"],
-      ["09.55–10.20", "Narasumber 2"],
-      ["10.20–10.30", "Ice breaking"],
-      ["10.30–10.55", "Narasumber 3"],
-      ["10.55–11.00", "Pemberian sertifikat dan dokumen"],
-      ["11.00–12.45", "ISOMA"],
-      ["12.45–13.15", "Games: Tebak Gaya"],
-      ["13.15–13.30", "Pengumuman Ketua dan Wakil Ketua"],
-      ["13.30–13.45", "Pengumuman pemenang sayembara"],
-      ["13.45", "Selesai"]
+      { from: "2026-11-13", to: "2026-11-13", title: "Puncak acara NARASI", detail: "Mini seminar, games, pengumuman Ketua dan Wakil, serta pemenang sayembara." }
     ]
   };
 
   /* ===================== Util ===================== */
   var MON = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
   var $ = function (id) { return document.getElementById(id); };
+  var qa = function (sel, ctx) { return [].slice.call((ctx || document).querySelectorAll(sel)); };
   var pad = function (n) { return String(n).padStart(2, "0"); };
   var T = function (s) { return new Date(s).getTime(); };
   var safeUrl = function (u) { return /^https?:\/\//i.test(u || "") ? u : ""; };
+  var PAGE = document.body.getAttribute("data-page") || "";
+  /* Tautan lama situs satu halaman (mis. situs/#voting di bio Instagram) dialihkan ke halaman barunya. */
+  if (PAGE === "home") {
+    var LAMA = { "#voting": "voting.html#voting", "#galeri": "voting.html#galeri", "#hasil": "voting.html#hasil", "#ketua": "about.html#k-ketua",
+      "#sayembara": "about.html#k-sayembara", "#timeline": "about.html#timeline", "#seminar": "about.html#seminar" };
+    if (LAMA[location.hash]) { location.replace(LAMA[location.hash]); return; }
+    window.addEventListener("hashchange", function () { if (LAMA[location.hash]) location.replace(LAMA[location.hash]); });
+  }
+  var REDUCE = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var TOUCH = window.matchMedia && matchMedia("(hover: none)").matches;
+  document.documentElement.classList.add(TOUCH ? "touch" : "mouse");
   /* Foto: yang disimpan di database hanya path di bucket "narasi"; URL disusun di sini. */
   var fotoUrl = function (path) {
     var base = (window.NARASI_CONFIG || {}).SUPABASE_URL || "";
+    base = String(base).trim().replace(/\/(rest|auth)\/v1.*$/, "").replace(/\/+$/, "");
     return base && /^[a-z0-9_-]+\/[a-z0-9-]+\.(jpg|jpeg|png|webp)$/.test(path || "") ? base + "/storage/v1/object/public/narasi/" + path : "";
   };
   /* ID video YouTube dari berbagai bentuk tautan; null bila bukan YouTube. */
@@ -76,15 +76,19 @@
     return a;
   }
   var fmtFull = new Intl.DateTimeFormat("id-ID", { dateStyle: "full", timeStyle: "short", timeZone: "Asia/Jakarta" });
-  function fmtWaktu(iso) { return fmtFull.format(new Date(iso)).replace(/\./g, ".") + " WIB"; }
+  var fmtShort = new Intl.DateTimeFormat("id-ID", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZone: "Asia/Jakarta" });
+  var fmtYmd = new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Jakarta", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
+  function fmtWaktu(iso) { return fmtFull.format(new Date(iso)) + " WIB"; }
+  function fmtPendek(iso) { return fmtShort.format(new Date(iso)).replace(/\./g, ".") + " WIB"; }
   function sisa(ms) {
     var s = Math.max(0, Math.floor(ms / 1000)), d = Math.floor(s / 86400), j = Math.floor(s % 86400 / 3600), m = Math.floor(s % 3600 / 60);
     if (d > 0) return d + " hari " + j + " jam lagi";
     if (j > 0) return j + " jam " + m + " menit lagi";
     return m + " menit " + (s % 60) + " detik lagi";
   }
+  function buzz() { try { if (navigator.vibrate) navigator.vibrate(12); } catch (e) {} }
 
-  /* ===================== Backend ===================== */
+  /* ===================== Backend (Home dan Voting saja) ===================== */
   var CFG = window.NARASI_CONFIG || {};
   if (CFG.SUPABASE_URL) CFG.SUPABASE_URL = String(CFG.SUPABASE_URL).trim().replace(/\/(rest|auth)\/v1.*$/, "").replace(/\/+$/, "");
   var sb = null;
@@ -93,7 +97,7 @@
       sb = window.supabase.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_ANON_KEY, {
         auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }
       });
-    } else {
+    } else if (PAGE === "home" || PAGE === "voting") {
       console.warn("NARASI: js/config.js belum diisi. Bilik suara dan galeri dinonaktifkan.");
     }
   } catch (e) { console.error(e); }
@@ -103,44 +107,65 @@
     return Promise.resolve(sb.rpc(name, args || {})).then(function (r) { return r; }, function (e) { return { error: e || { message: "jaringan" } }; });
   }
 
-  var S = { status: null, offset: 0, error: false, hasilDimuat: false, lastLoad: 0, galeriKey: "" };
+  var S = { status: null, offset: 0, error: false, hasilDimuat: false, lastLoad: 0, galeriKey: "", dokKey: "" };
   var nowMs = function () { return Date.now() + S.offset; };
 
-  /* ===================== Header: instagram, countdown ===================== */
-  var EVENT = T(CONTENT.event), START = T(CONTENT.start);
-  $("ig-link").textContent = "@" + CONTENT.instagram;
-  $("ig-link").href = "https://www.instagram.com/" + CONTENT.instagram + "/";
-  $("ig-note").textContent = "@" + CONTENT.instagram;
+  /* ===================== Semua halaman: tautan Instagram ===================== */
+  qa(".ig-link").forEach(function (a) { a.href = "https://www.instagram.com/" + CONTENT.instagram + "/"; });
+  qa(".ig-text").forEach(function (e) { e.textContent = "@" + CONTENT.instagram; });
 
-  /* ===================== Timeline & rundown ===================== */
-  function rangeText(from, to) {
-    var a = from.split("-").map(Number), b = to.split("-").map(Number);
-    if (from === to) return a[2] + " " + MON[a[1] - 1] + " " + a[0];
-    if (a[1] === b[1]) return a[2] + "–" + b[2] + " " + MON[a[1] - 1] + " " + a[0];
-    return a[2] + " " + MON[a[1] - 1] + " – " + b[2] + " " + MON[b[1] - 1] + " " + a[0];
+  /* ===================== Lightbox foto (galeri: geser, panah, Escape) ===================== */
+  var lb = null, lastBtn = null, LB = { items: [], i: 0 };
+  function closeLb() {
+    if (!lb) return;
+    lb.remove(); lb = null; document.removeEventListener("keydown", onKey);
+    document.documentElement.classList.remove("lb-open");
+    if (lastBtn && document.contains(lastBtn)) lastBtn.focus();
   }
-  var LABEL = { selesai: "Selesai", berlangsung: "Berlangsung", berikutnya: "Berikutnya", mendatang: "Mendatang" };
-  function renderTimeline() {
-    var now = nowMs(), firstNext = -1;
-    CONTENT.timeline.forEach(function (it, i) { if (firstNext < 0 && T(it.from + "T00:00:00+07:00") > now) firstNext = i; });
-    var ol = $("tl-list"); clear(ol);
-    CONTENT.timeline.forEach(function (it, i) {
-      var s = T(it.from + "T00:00:00+07:00"), e = T(it.to + "T23:59:59+07:00"), st;
-      if (now > e) st = "selesai"; else if (now >= s) st = "berlangsung"; else st = (i === firstNext ? "berikutnya" : "mendatang");
-      ol.appendChild(h("li", { class: "tl", "data-state": st }, [
-        h("span", { class: "mk", "aria-hidden": "true" }),
-        h("div", { class: "card" }, [
-          h("div", { class: "when" }, [h("span", { class: "mono", text: rangeText(it.from, it.to) }), h("span", { class: "chip", text: LABEL[st] })]),
-          h("h3", { text: it.title }), h("p", { text: it.detail })
-        ])
-      ]));
+  function onKey(e) {
+    if (e.key === "Escape") closeLb();
+    else if (e.key === "ArrowRight") geserLb(1);
+    else if (e.key === "ArrowLeft") geserLb(-1);
+  }
+  function tampilLb() {
+    var it = LB.items[LB.i], img = lb.querySelector(".lb-img"), cap = lb.querySelector("figcaption"), n = lb.querySelector(".lb-n");
+    img.src = it.src; img.alt = it.alt || "";
+    cap.textContent = it.cap || "";
+    if (n) n.textContent = (LB.i + 1) + " / " + LB.items.length;
+  }
+  function geserLb(d) {
+    if (!lb || LB.items.length < 2) return;
+    LB.i = (LB.i + d + LB.items.length) % LB.items.length;
+    tampilLb(); buzz();
+    lb.dispatchEvent(new CustomEvent("lb:geser", { detail: d }));
+  }
+  /* items: [{src, alt, cap}] */
+  function bukaLb(items, i, btn) {
+    closeLb(); lastBtn = btn; LB = { items: items, i: i || 0 };
+    var banyak = items.length > 1;
+    var x = h("button", { type: "button", class: "x", text: "Tutup ×", onclick: closeLb });
+    var fig = h("figure", null, [h("img", { class: "lb-img", src: "", alt: "" }), h("figcaption", { class: "mono" })]);
+    lb = h("div", { class: "lb", role: "dialog", "aria-modal": "true", "aria-label": "Foto" }, [
+      x, fig,
+      banyak ? h("button", { type: "button", class: "lb-nav lb-prev", "aria-label": "Foto sebelumnya", text: "<", onclick: function (e) { e.stopPropagation(); geserLb(-1); } }) : null,
+      banyak ? h("button", { type: "button", class: "lb-nav lb-next", "aria-label": "Foto berikutnya", text: ">", onclick: function (e) { e.stopPropagation(); geserLb(1); } }) : null,
+      banyak ? h("span", { class: "lb-n mono", "aria-live": "polite" }) : null
+    ]);
+    lb.addEventListener("click", function (e) { if (e.target === lb || e.target === fig) closeLb(); });
+    var x0 = null, y0 = null;
+    lb.addEventListener("touchstart", function (e) { var t = e.changedTouches[0]; x0 = t.clientX; y0 = t.clientY; }, { passive: true });
+    lb.addEventListener("touchend", function (e) {
+      if (x0 == null) return;
+      var t = e.changedTouches[0], dx = t.clientX - x0, dy = t.clientY - y0; x0 = null;
+      if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(dy)) geserLb(dx < 0 ? 1 : -1);
+      else if (dy > 90 && Math.abs(dy) > Math.abs(dx)) closeLb();
     });
+    tampilLb();
+    document.body.appendChild(lb); document.documentElement.classList.add("lb-open");
+    x.focus(); document.addEventListener("keydown", onKey);
   }
-  (function () {
-    var dl = $("rundown");
-    CONTENT.rundown.forEach(function (r) { dl.appendChild(h("dt", { text: r[0] })); dl.appendChild(h("dd", { text: r[1] })); });
-  })();
 
+  /* ===================== Voting: galeri (dari server) ===================== */
   /* ===================== Galeri (dari server) ===================== */
   function nosignal(title, text) {
     return h("div", { class: "nosig" }, [h("b", null, [title, h("span", { class: "cur", "aria-hidden": "true" })]), h("p", { text: text })]);
@@ -151,6 +176,7 @@
   }
   function renderGaleri() {
     var st = S.status, ent = $("entries"), can = $("candidates");
+    if (!ent || !can) return;
     var key = st ? JSON.stringify([st.karya, st.calon]) : "x" + (S.error ? "e" : "");
     if (key === S.galeriKey) return;
     S.galeriKey = key;
@@ -192,9 +218,10 @@
   function fotoStrip(list, alt) {
     var urls = (list || []).map(fotoUrl).filter(Boolean);
     if (!urls.length) return null;
+    var items = urls.map(function (u, i) { return { src: u, alt: alt + ", foto " + (i + 1), cap: alt + " · foto " + (i + 1) + " dari " + urls.length }; });
     return h("div", { class: "fstrip" }, urls.map(function (u, i) {
       var img = h("img", { src: u, alt: alt + ", foto " + (i + 1), loading: "lazy", decoding: "async" });
-      var b = h("button", { type: "button", class: "fthumb", "aria-label": "Perbesar foto " + (i + 1) + " " + alt, onclick: function () { bukaLb(u, alt, alt, b); } }, img);
+      var b = h("button", { type: "button", class: "fthumb", "aria-label": "Perbesar foto " + (i + 1) + " " + alt, onclick: function () { bukaLb(items, i, b); } }, img);
       return b;
     }));
   }
@@ -207,7 +234,7 @@
       if (u) {
         var img = h("img", { src: u, alt: peran + ": " + nama, loading: "lazy", decoding: "async" });
         if (kecil) box.appendChild(img);
-        else { var b = h("button", { type: "button", "aria-label": "Perbesar foto " + peran + " " + nama, onclick: function () { bukaLb(u, peran + ": " + nama, peran + " · " + nama, b); } }, img); box.appendChild(b); }
+        else { var b = h("button", { type: "button", "aria-label": "Perbesar foto " + peran + " " + nama, onclick: function () { bukaLb([{ src: u, alt: peran + ": " + nama, cap: peran + " · " + nama }], 0, b); } }, img); box.appendChild(b); }
       } else box.appendChild(h("div", { class: "pot-kosong", text: "Foto menyusul" }));
       box.appendChild(h("figcaption", { class: "mono" }, [h("b", { text: peran }), " " + nama]));
       return box;
@@ -254,6 +281,7 @@
 
   function renderVote() {
     var root = $("vote-body"), st = S.status;
+    if (!root) return;
     if (inBallot() && st && st.fase === "buka") return;
     if (V.step === "selesai") return;
     clear(root);
@@ -417,7 +445,8 @@
   /* ===================== Hasil ===================== */
   function renderHasil(d) {
     var sec = $("hasil"), root = $("result-body");
-    sec.hidden = false; $("nav-hasil").hidden = false; clear(root);
+    if (!sec || !root) return;
+    sec.hidden = false; if ($("nav-hasil")) $("nav-hasil").hidden = false; clear(root);
     root.appendChild(h("h2", { id: "h-hasil", text: "Hasil Voting" }));
     var pct = function (a, b) { return b ? Math.round(a / b * 100) + "%" : "0%"; };
     root.appendChild(h("p", { class: "mono muted", text: "Partisipasi · identitas " + d.memilih_sayembara + " dari " + d.total_pemilih + " (" + pct(d.memilih_sayembara, d.total_pemilih) + ") · ketua " + d.memilih_ketua + " dari " + d.total_pemilih + " (" + pct(d.memilih_ketua, d.total_pemilih) + ")" }));
@@ -446,7 +475,7 @@
     }
   }
   function muatHasil() {
-    if (S.hasilDimuat || !S.status || !S.status.hasil_terbuka) return;
+    if (S.hasilDimuat || !S.status || !S.status.hasil_terbuka || !$("result-body")) return;
     S.hasilDimuat = true;
     rpc("hasil_publik").then(function (r) {
       if (r.error || !r.data || !r.data.terbuka) { S.hasilDimuat = false; return; }
@@ -454,57 +483,284 @@
     });
   }
 
-  /* ===================== Status dari server ===================== */
-  function muatStatus() {
-    S.lastLoad = Date.now();
-    return rpc("status_publik").then(function (r) {
-      if (r.error || !r.data) { S.error = true; renderGaleri(); renderVote(); return; }
-      S.error = false; S.status = r.data;
-      S.offset = new Date(r.data.sekarang).getTime() - Date.now();
-      renderGaleri(); renderVote(); muatHasil();
-    });
+  /* ===================== Status fase: Home (CTA, stiker) dan Voting (ringkas) ===================== */
+  var STAMP = {
+    sebelum: "VOTING 26 OKT · SIAPKAN PILIHAN · ",
+    buka: "VOTING DIBUKA · PILIH SEKARANG · ",
+    dijeda: "VOTING DIJEDA · CEK LAGI NANTI · ",
+    tutup: "VOTING DITUTUP · HASIL 13 NOV · ",
+    hasil: "HASIL SUDAH KELUAR · LIHAT · "
+  };
+  function faseKini(st) { return st.hasil_terbuka ? "hasil" : st.fase; }
+  function renderFase() {
+    var st = S.status; if (!st) return;
+    var f = faseKini(st), now = nowMs();
+    var txt = {
+      sebelum: "Voting dibuka " + fmtPendek(st.buka) + " · " + sisa(T(st.buka) - now),
+      buka: "Voting sedang dibuka · tutup " + fmtPendek(st.tutup),
+      dijeda: "Voting dijeda sementara oleh panitia",
+      tutup: "Voting ditutup · hasil " + fmtPendek(st.hasil_at),
+      hasil: "Hasil voting sudah keluar"
+    }[f] || "";
+    var live = $("live");
+    if (live) {
+      live.hidden = false; live.setAttribute("data-fase", f);
+      live.href = f === "hasil" ? "voting.html#hasil" : (f === "buka" ? "voting.html#voting" : "voting.html");
+      $("live-txt").textContent = txt;
+    }
+    var cta = $("cta-vote-txt");
+    if (cta) {
+      cta.textContent = { sebelum: "Lihat karya & calon", buka: "Pilih sekarang", dijeda: "Ke halaman voting", tutup: "Lihat galeri", hasil: "Lihat hasil" }[f];
+      $("cta-vote").href = f === "hasil" ? "voting.html#hasil" : (f === "buka" ? "voting.html#voting" : "voting.html");
+    }
+    var stamp = $("stamp-txt");
+    if (stamp && stamp.getAttribute("data-f") !== f) { stamp.textContent = STAMP[f] || STAMP.sebelum; stamp.setAttribute("data-f", f); $("stamp").href = f === "hasil" ? "voting.html#hasil" : "voting.html"; }
+    var vs = $("vstat");
+    if (vs) {
+      vs.hidden = false; vs.setAttribute("data-fase", f);
+      $("vstat-chip").textContent = { sebelum: "Segera", buka: "Dibuka", dijeda: "Dijeda", tutup: "Ditutup", hasil: "Hasil" }[f];
+      $("vstat-txt").textContent = txt;
+    }
   }
 
-  /* ===================== Jam ===================== */
-  function tick() {
-    var now = nowMs(), s = Math.max(0, Math.floor((EVENT - now) / 1000));
+  /* ===================== Home: dokumentasi berjalan ===================== */
+  function dokStatik() {
+    return qa("#doc-marquee .dcard button").map(function (b) {
+      var img = b.querySelector("img");
+      return { thumb: img.getAttribute("src"), src: b.getAttribute("data-full"), alt: img.alt, cap: b.getAttribute("data-cap") || "" };
+    });
+  }
+  var DOK0 = $("doc-marquee") ? dokStatik() : [];
+  function renderDok() {
+    var box = $("doc-marquee"); if (!box) return;
+    var dari = S.status && S.status.dokumentasi;
+    var items = (dari || []).map(function (d) {
+      var u = fotoUrl(d.foto); if (!u) return null;
+      return { thumb: u, src: u, alt: d.keterangan ? "Dokumentasi: " + d.keterangan : "Foto dokumentasi angkatan", cap: d.keterangan || "" };
+    }).filter(Boolean);
+    if (!items.length) items = DOK0;
+    var key = JSON.stringify(items.map(function (i) { return i.src + i.cap; }));
+    if (key === S.dokKey || !items.length) return;
+    S.dokKey = key;
+    var rows = items.length >= 6
+      ? [items.filter(function (_, i) { return i % 2 === 0; }), items.filter(function (_, i) { return i % 2 === 1; })]
+      : [items.slice(), items.slice().reverse()];
+    clear(box);
+    rows.forEach(function (row, r) {
+      var seq = []; while (seq.length < 8) seq = seq.concat(row);
+      var track = h("div", { class: "mq-track" });
+      var count = 0;
+      seq.concat(seq).forEach(function (it, k) {
+        var asli = k < row.length;              // salinan pertama saja yang bisa difokus/dibaca
+        var idx = items.indexOf(it);
+        var no = pad(idx + 1);
+        var b = h("button", { type: "button", "aria-label": asli ? "Perbesar foto " + no + (it.cap ? ": " + it.cap : "") : null, tabindex: asli ? null : "-1",
+          onclick: function () { bukaLb(items, idx, b); } }, h("img", { src: it.thumb, alt: asli ? it.alt : "", loading: count++ < 6 ? "eager" : "lazy", decoding: "async" }));
+        track.appendChild(h("figure", { class: "dcard" + (asli ? "" : " dup"), "aria-hidden": asli ? null : "true", style: "--r:" + ((k * 7 % 5) - 2) * .8 + "deg" }, [
+          b, h("figcaption", { class: "mono" }, [h("b", { text: "Arsip " + no }), it.cap ? " " + it.cap : ""])]));
+      });
+      var rowEl = h("div", { class: "mq-row", "data-dir": r === 0 ? "right" : "left", style: "--dur:" + (seq.length * (TOUCH ? 4.2 : 5)) + "s" }, track);
+      // Tahan (sentuh) atau arahkan kursor = berhenti; lepas = jalan lagi.
+      rowEl.addEventListener("pointerdown", function () { rowEl.classList.add("hold"); });
+      ["pointerup", "pointercancel", "pointerleave"].forEach(function (ev) { rowEl.addEventListener(ev, function () { rowEl.classList.remove("hold"); }); });
+      box.appendChild(rowEl);
+    });
+    box.classList.add("ready");
+  }
+
+  /* ===================== Home: portal lorong waktu (ketuk) ===================== */
+  (function () {
+    var btn = $("portal-btn"), toast = $("portal-toast"); if (!btn) return;
+    var ERA = [
+      ["2050", "Mendarat di 2050: angkatan ini sudah jadi cerita yang diwariskan."],
+      ["1980", "Mundur ke 1980: zaman kaset, disket, dan surat cinta di kertas."],
+      ["2000", "Singgah di 2000: era warnet dan SMS 160 karakter."],
+      ["2026", "Kembali ke 2026: kamu di sini. Saatnya menulis NARASI."]
+    ];
+    var i = 0, wrap = btn.parentNode, t = null;
+    btn.addEventListener("click", function () {
+      var e = ERA[i % ERA.length]; i++;
+      wrap.classList.remove("warp"); void wrap.offsetWidth; wrap.classList.add("warp");
+      wrap.setAttribute("data-era", e[0]);
+      toast.textContent = e[1]; buzz();
+      clearTimeout(t); t = setTimeout(function () { wrap.classList.remove("warp"); }, 1300);
+    });
+  })();
+
+  /* ===================== Home: hitung mundur ===================== */
+  var EVENT = T(CONTENT.event), START = T(CONTENT.start);
+  function tickHome(now) {
+    if (!$("cd-d")) return;
+    var s = Math.max(0, Math.floor((EVENT - now) / 1000));
     $("cd-d").textContent = pad(Math.floor(s / 86400));
     $("cd-h").textContent = pad(Math.floor(s % 86400 / 3600));
     $("cd-m").textContent = pad(Math.floor(s % 3600 / 60));
     $("cd-s").textContent = pad(s % 60);
     var pct = Math.max(0, Math.min(100, Math.round((now - START) / (EVENT - START) * 100)));
     $("load-pct").textContent = pct + "%"; $("load-fill").style.width = pct + "%"; $("load-bar").setAttribute("aria-valuenow", pct);
+  }
 
+  /* ===================== About: timeline ===================== */
+  function rangeText(from, to) {
+    var a = from.split("-").map(Number), b = to.split("-").map(Number);
+    if (from === to) return a[2] + " " + MON[a[1] - 1] + " " + a[0];
+    if (a[1] === b[1]) return a[2] + "–" + b[2] + " " + MON[a[1] - 1] + " " + a[0];
+    return a[2] + " " + MON[a[1] - 1] + " – " + b[2] + " " + MON[b[1] - 1] + " " + a[0];
+  }
+  var LABEL = { selesai: "Selesai", berlangsung: "Berlangsung", berikutnya: "Berikutnya", mendatang: "Mendatang" };
+  function renderTimeline() {
+    var ol = $("tl-list"); if (!ol) return;
+    var now = nowMs(), firstNext = -1;
+    CONTENT.timeline.forEach(function (it, i) { if (firstNext < 0 && T(it.from + "T00:00:00+07:00") > now) firstNext = i; });
+    var key = CONTENT.timeline.map(function (it, i) {
+      var s = T(it.from + "T00:00:00+07:00"), e = T(it.to + "T23:59:59+07:00");
+      return now > e ? "selesai" : now >= s ? "berlangsung" : (i === firstNext ? "berikutnya" : "mendatang");
+    });
+    if (ol.getAttribute("data-k") === key.join()) return;
+    ol.setAttribute("data-k", key.join());
+    clear(ol);
+    CONTENT.timeline.forEach(function (it, i) {
+      var st = key[i];
+      ol.appendChild(h("li", { class: "tl", "data-state": st }, [
+        h("span", { class: "mk", "aria-hidden": "true" }),
+        h("div", { class: "card" }, [
+          h("div", { class: "when" }, [h("span", { class: "mono", text: rangeText(it.from, it.to) }), h("span", { class: "chip", text: LABEL[st] })]),
+          h("h3", { text: it.title }), h("p", { text: it.detail })
+        ])
+      ]));
+    });
+  }
+
+  /* ===================== About: rundown, tandai yang sedang berjalan di hari-H ===================== */
+  function renderRundown() {
+    var ol = $("run-list"); if (!ol) return;
+    var p = fmtYmd.format(new Date(nowMs())).split(" "), hari = p[0], jam = p[1];
+    var info = $("run-now"), now = null;
+    qa("li", ol).forEach(function (li) {
+      var s = li.getAttribute("data-s"), e = li.getAttribute("data-e"), st = "";
+      if (hari > CONTENT.eventDate || (hari === CONTENT.eventDate && jam >= e && s !== e) || (hari === CONTENT.eventDate && s === e && jam >= s)) st = "lewat";
+      else if (hari === CONTENT.eventDate && jam >= s && jam < e) { st = "kini"; now = li; }
+      if (li.getAttribute("data-st") !== st) {
+        if (st) li.setAttribute("data-st", st); else li.removeAttribute("data-st");
+        var old = li.querySelector(".run-badge"); if (old) old.remove();
+        if (st === "kini") li.appendChild(h("b", { class: "run-badge mono", text: "Sekarang" }));
+      }
+    });
+    if (info) {
+      if (now) { info.hidden = false; info.textContent = "Sedang berlangsung: " + now.querySelector("span").firstChild.textContent.trim(); }
+      else info.hidden = true;
+    }
+  }
+
+  /* ===================== About: tab tiga kegiatan ===================== */
+  (function () {
+    var list = document.querySelector(".tabs[role=tablist]"); if (!list) return;
+    var tabs = qa("[role=tab]", list), panels = tabs.map(function (t) { return $(t.getAttribute("aria-controls")); });
+    function pilih(i, fokus) {
+      tabs.forEach(function (t, k) {
+        var on = k === i;
+        t.setAttribute("aria-selected", on ? "true" : "false");
+        t.tabIndex = on ? 0 : -1;
+        panels[k].hidden = !on;
+      });
+      list.style.setProperty("--i", i);
+      if (fokus) tabs[i].focus();
+    }
+    list.hidden = false;
+    tabs.forEach(function (t, i) {
+      t.addEventListener("click", function () { pilih(i); buzz(); });
+      t.addEventListener("keydown", function (e) {
+        var k = { ArrowRight: i + 1, ArrowLeft: i - 1, Home: 0, End: tabs.length - 1 }[e.key];
+        if (k == null) return; e.preventDefault(); pilih((k + tabs.length) % tabs.length, true);
+      });
+    });
+    function dariHash() {
+      var idx = panels.map(function (p) { return "#" + p.id; }).indexOf(location.hash);
+      pilih(idx < 0 ? 0 : idx);
+      if (idx >= 0) setTimeout(function () { $("kegiatan").scrollIntoView({ block: "start" }); }, 30);
+    }
+    dariHash();
+    window.addEventListener("hashchange", dariHash);
+  })();
+
+  /* ===================== About: kartu narasumber dibalik ===================== */
+  qa(".spk").forEach(function (card) {
+    var front = card.querySelector(".front"), back = card.querySelector(".back");
+    var open = card.querySelector(".front .spk-btn"), close = card.querySelector(".back .spk-btn");
+    card.classList.add("flip-ready");
+    back.inert = true; back.setAttribute("aria-hidden", "true");
+    function balik(ke) {
+      var b = ke === "back";
+      card.classList.toggle("flipped", b);
+      front.inert = b; back.inert = !b;
+      front.setAttribute("aria-hidden", b ? "true" : "false"); back.setAttribute("aria-hidden", b ? "false" : "true");
+      open.setAttribute("aria-expanded", b ? "true" : "false");
+      buzz();
+      setTimeout(function () { (b ? close : open).focus({ preventScroll: true }); }, REDUCE ? 0 : 260);
+    }
+    front.addEventListener("click", function () { balik("back"); });
+    close.addEventListener("click", function (e) { e.stopPropagation(); balik("front"); });
+  });
+
+  /* ===================== About: Personal Statement ===================== */
+  (function () {
+    var out = $("ps-out"); if (!out) return;
+    var F = ["nama", "nilai", "bukti", "aksi", "siapa"].map(function (k) { return [k, $("ps-" + k)]; });
+    var CONTOH = [
+      ["Raka", "kolaborasi", "memimpin kelompok tugas kelas", "membuat kelas belajar desain tiap Jumat", "teman seangkatan"],
+      ["Nadia", "kejujuran", "mengelola kas organisasi SMA", "membuat laporan keuangan angkatan yang terbuka", "seluruh angkatan"],
+      ["Bima", "kreativitas", "membuat konten untuk usaha keluarga", "berbagi cara memotret produk dengan HP", "teman yang mulai berjualan"]
+    ];
+    var ci = 0;
+    function render() {
+      clear(out);
+      var v = {}; F.forEach(function (f) { v[f[0]] = f[1].value.trim(); });
+      var part = function (k) { return h("b", { class: v[k] ? "" : "kosong", text: v[k] || "[" + k + "]" }); };
+      ["Saya ", part("nama"), ", mahasiswa Bisnis Digital yang peduli pada ", part("nilai"), ". Saya sudah ", part("bukti"), ", dan saya ingin ", part("aksi"), " untuk ", part("siapa"), "."]
+        .forEach(function (x) { out.appendChild(typeof x === "string" ? document.createTextNode(x) : x); });
+    }
+    F.forEach(function (f) { f[1].addEventListener("input", render); });
+    var copy = $("ps-copy"), rand = $("ps-rand"), msg = $("ps-msg");
+    copy.hidden = false; rand.hidden = false;
+    copy.addEventListener("click", function () {
+      var t = out.textContent;
+      if (/\[(nama|nilai|bukti|aksi|siapa)\]/.test(t)) { msg.textContent = "Lengkapi dulu semua isian."; return; }
+      Promise.resolve(navigator.clipboard && navigator.clipboard.writeText(t)).then(function () { msg.textContent = "Tersalin. Bawa ke seminar!"; buzz(); }, function () { msg.textContent = "Tidak bisa menyalin otomatis. Tahan teks untuk menyalin."; });
+    });
+    rand.addEventListener("click", function () { var c = CONTOH[ci++ % CONTOH.length]; F.forEach(function (f, i) { f[1].value = c[i]; }); render(); msg.textContent = ""; });
+    render();
+  })();
+
+  /* ===================== Status dari server ===================== */
+  function muatStatus() {
+    S.lastLoad = Date.now();
+    return rpc("status_publik").then(function (r) {
+      if (r.error || !r.data) { S.error = true; renderGaleri(); renderVote(); renderDok(); return; }
+      S.error = false; S.status = r.data;
+      S.offset = new Date(r.data.sekarang).getTime() - Date.now();
+      renderGaleri(); renderVote(); renderFase(); renderDok(); muatHasil();
+    });
+  }
+
+  /* ===================== Jam ===================== */
+  function tick() {
+    var now = nowMs();
+    tickHome(now);
     var st = S.status;
     if (st) {
       var cd = $("vote-cd");
       if (cd) cd.textContent = st.fase === "sebelum" ? sisa(T(st.buka) - now) : sisa(T(st.tutup) - now);
       var lewat = (st.fase === "sebelum" && now >= T(st.buka)) || (st.fase === "buka" && now > T(st.tutup)) || (!st.hasil_terbuka && now >= Math.max(T(st.hasil_at), T(st.tutup)));
       if (lewat && Date.now() - S.lastLoad > 5000) muatStatus();
+      if (st.fase === "sebelum" && $("live")) renderFase();
     }
   }
 
-  /* ===================== Lightbox foto ===================== */
-  var lb = null, lastBtn = null;
-  function closeLb() { if (lb) { lb.remove(); lb = null; document.removeEventListener("keydown", onKey); if (lastBtn) lastBtn.focus(); } }
-  function onKey(e) { if (e.key === "Escape") closeLb(); }
-  function bukaLb(src, alt, cap, btn) {
-    closeLb(); lastBtn = btn;
-    var img = h("img", { src: src, alt: alt });
-    var x = h("button", { type: "button", class: "x", text: "Tutup ×" });
-    lb = h("div", { class: "lb", role: "dialog", "aria-modal": "true", "aria-label": "Foto", onclick: closeLb }, [
-      x, h("figure", null, [img, h("figcaption", { class: "mono", text: cap || "" })])]);
-    document.body.appendChild(lb); x.focus(); document.addEventListener("keydown", onKey);
-  }
-  document.querySelectorAll(".shot button").forEach(function (b) {
-    b.addEventListener("click", function () { bukaLb(b.dataset.full, b.querySelector("img").alt, b.dataset.cap, b); });
-  });
-
   /* ===================== Mulai ===================== */
-  renderTimeline(); renderGaleri(); renderVote(); tick();
+  renderTimeline(); renderRundown(); renderGaleri(); renderVote(); renderDok(); tick();
   setInterval(tick, 1000);
-  setInterval(renderTimeline, 60000);
-  if (sb) {
+  if ($("tl-list") || $("run-list")) setInterval(function () { renderTimeline(); renderRundown(); }, 30000);
+  if (sb && (PAGE === "home" || PAGE === "voting")) {
     muatStatus();
     setInterval(function () { if (!inBallot() && V.step !== "selesai") muatStatus(); }, 60000);
   }

@@ -74,12 +74,25 @@ create table if not exists pengaturan (
   id        int primary key default 1 check (id = 1),
   buka_at   timestamptz not null default '2026-10-26 00:00:00+07',
   tutup_at  timestamptz not null default '2026-10-30 23:59:59+07',
-  hasil_at  timestamptz not null default '2026-11-13 13:15:00+07',
+  hasil_at  timestamptz not null default '2026-11-13 16:00:00+07',
   dijeda    boolean not null default false,
   check (buka_at < tutup_at),
   check (hasil_at >= tutup_at)
 );
 insert into pengaturan (id) values (1) on conflict (id) do nothing;
+-- Jam hasil mengikuti rundown siang (pengumuman 15.30–16.00). Hanya mengubah bila masih nilai lama.
+update pengaturan set hasil_at = '2026-11-13 16:00:00+07' where id = 1 and hasil_at = '2026-11-13 13:15:00+07';
+alter table pengaturan alter column hasil_at set default '2026-11-13 16:00:00+07';
+
+-- Foto dokumentasi untuk halaman Home (kartu berjalan). Satu baris = satu foto.
+create table if not exists dokumentasi (
+  id          uuid primary key default gen_random_uuid(),
+  foto        text not null check (foto ~ '^[a-z0-9_-]+/[a-z0-9-]+\.(jpg|jpeg|png|webp)$'),
+  keterangan  text check (keterangan is null or char_length(keterangan) <= 120),
+  urut        int  not null default 0,
+  tayang      boolean not null default true,
+  dibuat      timestamptz not null default now()
+);
 
 create table if not exists admin (
   user_id  uuid primary key references auth.users (id) on delete cascade,
@@ -222,7 +235,10 @@ language sql stable security definer set search_path = public, pg_temp as $$
         'id', id, 'ketua', ketua, 'wakil', wakil, 'visi', visi, 'tautan_kampanye', tautan_kampanye,
         'foto_ketua', foto_ketua, 'foto_wakil', foto_wakil)
         order by urut, dibuat)
-      from calon where tayang), '[]'::jsonb)
+      from calon where tayang), '[]'::jsonb),
+    'dokumentasi', coalesce((
+      select jsonb_agg(jsonb_build_object('id', id, 'foto', foto, 'keterangan', keterangan) order by urut, dibuat)
+      from dokumentasi where tayang), '[]'::jsonb)
   )
   from pengaturan p where p.id = 1;
 $$;
@@ -496,7 +512,7 @@ begin
 end $$;
 
 -- ---------------------------------------------------------------------
--- 5. PENCATATAN PERUBAHAN KONTEN (karya, calon, pengaturan)
+-- 5. PENCATATAN PERUBAHAN KONTEN (karya, calon, dokumentasi, pengaturan)
 -- ---------------------------------------------------------------------
 create or replace function audit_trigger() returns trigger
 language plpgsql security definer set search_path = public, pg_temp as $$
@@ -516,6 +532,9 @@ create trigger trg_audit_karya after insert or update or delete on karya
 drop trigger if exists trg_audit_calon on calon;
 create trigger trg_audit_calon after insert or update or delete on calon
   for each row execute function audit_trigger();
+drop trigger if exists trg_audit_dokumentasi on dokumentasi;
+create trigger trg_audit_dokumentasi after insert or update or delete on dokumentasi
+  for each row execute function audit_trigger();
 drop trigger if exists trg_audit_pengaturan on pengaturan;
 create trigger trg_audit_pengaturan after update on pengaturan
   for each row execute function audit_trigger();
@@ -527,6 +546,7 @@ alter table kelas        enable row level security;
 alter table pemilih      enable row level security;
 alter table karya        enable row level security;
 alter table calon        enable row level security;
+alter table dokumentasi  enable row level security;
 alter table pengaturan   enable row level security;
 alter table admin        enable row level security;
 alter table suara_karya  enable row level security;
@@ -539,7 +559,7 @@ revoke all on all sequences in schema public from anon, authenticated;
 
 -- Panitia (login) membaca dan mengelola konten lewat tabel
 grant select on kelas, pemilih, admin, log_audit to authenticated;
-grant select, insert, update, delete on karya, calon to authenticated;
+grant select, insert, update, delete on karya, calon, dokumentasi to authenticated;
 
 drop policy if exists p_kelas_baca on kelas;
 create policy p_kelas_baca on kelas for select to authenticated using (is_admin());
@@ -552,6 +572,9 @@ create policy p_karya_admin on karya for all to authenticated using (is_admin())
 
 drop policy if exists p_calon_admin on calon;
 create policy p_calon_admin on calon for all to authenticated using (is_admin()) with check (is_admin());
+
+drop policy if exists p_dok_admin on dokumentasi;
+create policy p_dok_admin on dokumentasi for all to authenticated using (is_admin()) with check (is_admin());
 
 drop policy if exists p_admin_diri on admin;
 create policy p_admin_diri on admin for select to authenticated using (user_id = auth.uid());

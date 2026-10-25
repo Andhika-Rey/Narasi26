@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Voting · NARASI 2026</title>
+<meta name="description" content="Galeri karya sayembara identitas, pasangan calon Ketua dan Wakil, bilik suara, dan hasil voting NARASI 2026.">
+<meta name="theme-color" content="#F1E3C5" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#241D19" media="(prefers-color-scheme: dark)">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https://*.supabase.co https://i.ytimg.com; frame-src https://www.youtube-nocookie.com; connect-src 'self' https://*.supabase.co; base-uri 'self'; form-action 'self'; object-src 'none'">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<link rel="icon" href="img/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;700&family=Bowlby+One&family=IBM+Plex+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="js/motion-pre.js"></script>
+<link rel="stylesheet" href="css/narasi.css">
+<link rel="stylesheet" href="css/pages.css">
+<link rel="stylesheet" href="css/motion.css">
+</head>
+<body data-page="voting">
+<div class="grain" aria-hidden="true"></div>
+<a class="skip" href="#main">Lewati ke konten</a>
+<div class="wrap" id="top">
+
+  <header class="top">
+    <a class="brand" href="index.html">NARASI<span>/2026</span></a>
+    <nav class="nav-top" aria-label="Menu utama">
+      <a href="index.html">Home</a>
+      <a href="about.html">About</a>
+      <a href="voting.html" aria-current="page">Voting</a>
+      <a href="kontak.html">Kontak</a>
+    </nav>
+    <a class="top-ig ig-link" href="https://www.instagram.com/narasi2026.id/" target="_blank" rel="noopener" aria-label="Instagram NARASI">IG</a>
+  </header>
+
+  <main id="main">
+  <section class="page-head" aria-labelledby="judul" style="--c: var(--yellow)">
+    <p class="eyebrow mono">bilik_suara.exe · 26–30 Oktober 2026</p>
+    <h1 class="ph-title" id="judul">Vot<span>ing</span></h1>
+    <p class="lead">Kenali karya dan pasangan calon dulu, lalu beri suaramu. Satu NIM, satu suara per surat, dan bersifat final.</p>
+    <p class="vstat" id="vstat" hidden><span class="chip" id="vstat-chip"></span><span class="mono" id="vstat-txt"></span></p>
+    <svg class="ph-ring" viewBox="0 0 200 200" aria-hidden="true"><circle cx="100" cy="100" r="96" fill="#E7B94C"/><circle cx="100" cy="100" r="76" fill="#C65A32"/><circle cx="100" cy="100" r="56" fill="#F1E3C5"/><path d="M84 64h8v8h8v8h8v8h8v8h-16v8h8v16h-8v-16h-8v8h-8v8h-8z" fill="#29221E"/></svg>
+  </section>
+
+  <nav class="steps" aria-label="Langkah voting">
+    <a href="#galeri"><b>1</b><span>Lihat karya</span></a>
+    <a href="#calon"><b>2</b><span>Kenali calon</span></a>
+    <a href="#voting"><b>3</b><span>Beri suara</span></a>
+    <a href="#hasil" id="nav-hasil" hidden><b>✓</b><span>Hasil</span></a>
+  </nav>
+
+  <div class="stack">
+    <section class="win" id="hasil" style="--tab: var(--orange)" aria-labelledby="h-hasil" hidden>
+      <div class="win-bar"><span class="tab"></span><span class="name">hasil_voting.log</span><span class="ctl" aria-hidden="true"><b>_</b><b>□</b><b>×</b></span></div>
+      <div class="win-body" id="result-body"></div>
+    </section>
+
+    <section class="win" id="galeri" style="--tab: var(--teal)" aria-labelledby="h-galeri">
+      <div class="win-bar"><span class="tab"></span><span class="name">galeri_karya.mp4</span><span class="ctl" aria-hidden="true"><b>_</b><b>□</b><b>×</b></span></div>
+      <div class="win-body">
+        <h2 id="h-galeri">Galeri Karya</h2>
+        <p>Paket identitas peserta: nama, logo, slogan, bendera, dan video. <span class="swipe-hint">Geser ke samping untuk melihat semua.</span></p>
+        <div id="entries"></div>
+      </div>
+    </section>
+
+    <section class="win" id="calon" style="--tab: var(--red)" aria-labelledby="h-calon">
+      <div class="win-bar"><span class="tab"></span><span class="name">pasangan_calon.exe</span><span class="ctl" aria-hidden="true"><b>_</b><b>□</b><b>×</b></span></div>
+      <div class="win-body">
+        <h2 id="h-calon">Pasangan Calon</h2>
+        <p>Calon Ketua dan Wakil Ketua Angkatan. Ketuk foto untuk memperbesar.</p>
+        <div id="candidates"></div>
+      </div>
+    </section>
+
+    <section class="win" id="voting" style="--tab: var(--yellow)" aria-labelledby="h-voting">
+      <div class="win-bar"><span class="tab"></span><span class="name">bilik_suara.exe</span><span class="ctl" aria-hidden="true"><b>_</b><b>□</b><b>×</b></span></div>
+      <div class="win-body" id="vote-body"></div>
+    </section>
+  </div>
+
+  </main>
+
+  <footer class="foot">
+    <div class="foot-brand">
+      <a class="brand" href="index.html">NARASI<span>/2026</span></a>
+      <p>Imajinasi untuk Lorong Waktu. Program Studi Bisnis Digital · Angkatan 2026 · Cakrawala University.</p>
+      <p class="mono muted">&gt; Loading future...<span class="cur" aria-hidden="true"></span></p>
+    </div>
+    <nav class="foot-nav" aria-label="Tautan bawah">
+      <a href="index.html">Home</a><a href="about.html">About</a><a href="voting.html">Voting</a><a href="kontak.html">Kontak</a>
+    </nav>
+    <p class="foot-ig mono">Instagram <a class="ig-link ig-text" href="https://www.instagram.com/narasi2026.id/" target="_blank" rel="noopener">@narasi2026.id</a></p>
+  </footer>
+</div>
+
+<nav class="tabbar" aria-label="Menu utama">
+      <a href="index.html"><svg viewBox="0 0 20 20" width="22" height="22" aria-hidden="true" shape-rendering="crispEdges" fill="currentColor"><path d="M9 1h2v2h2v2h2v2h2v2h2v2h-2v8h-5v-5H8v5H3v-8H1V9h2V7h2V5h2V3h2z"/></svg><span>Home</span></a>
+      <a href="about.html"><svg viewBox="0 0 20 20" width="22" height="22" aria-hidden="true" shape-rendering="crispEdges" fill="currentColor"><path d="M8 2h4v4H8zM6 8h6v8h2v2H6v-2h2v-6H6z"/></svg><span>About</span></a>
+      <a href="voting.html" aria-current="page"><svg viewBox="0 0 20 20" width="22" height="22" aria-hidden="true" shape-rendering="crispEdges" fill="currentColor"><path d="M3 2h14v2h2v14H1V4h2zm0 4v10h14V6zm3 5h2v2h2v-2h2V9h2v2h-2v2h-2v2H8v-2H6z"/></svg><span>Voting</span></a>
+      <a href="kontak.html"><svg viewBox="0 0 20 20" width="22" height="22" aria-hidden="true" shape-rendering="crispEdges" fill="currentColor"><path d="M3 2h14v2h2v9h-2v2H9l-4 4v-4H3v-2H1V4h2zm2 5v2h2V7zm4 0v2h2V7zm4 0v2h2V7z"/></svg><span>Kontak</span></a>
+</nav>
+
+<script src="vendor/supabase.js"></script>
+<script src="js/config.js"></script>
+<script src="js/site.js"></script>
+<script src="vendor/gsap.min.js"></script>
+<script src="vendor/ScrollTrigger.min.js"></script>
+<script src="js/motion.js"></script>
+</body>
+</html>

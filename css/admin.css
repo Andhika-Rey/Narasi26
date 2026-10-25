@@ -46,3 +46,14 @@ textarea.adm-input { min-height: 160px; font-family: var(--font-mono); resize: v
 .up-x { position: absolute; right: 4px; bottom: 4px; padding: 2px 8px; border: 2px solid var(--edge); border-radius: 4px; background: var(--yellow); color: #29221E; font: 700 .7rem var(--font-mono); cursor: pointer; }
 .tbl-img { display: block; width: 44px; height: 44px; object-fit: cover; border: 1.5px solid var(--edge); border-radius: 3px; }
 .tbl-pair { display: flex; gap: 6px; align-items: center; }
+
+/* Dokumentasi */
+.dok-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr)); gap: 14px; margin-top: 8px; }
+.dok-item { margin: 0; border: 2px solid var(--edge); border-radius: 6px; background: var(--bg); overflow: hidden; box-shadow: 3px 3px 0 var(--shadow); }
+.dok-item.draf img { opacity: .45; }
+.dok-item img { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-bottom: 2px solid var(--edge); }
+.dok-item figcaption { display: grid; gap: 8px; padding: 10px; }
+.dok-item .pill { justify-self: start; }
+.dok-u { display: flex; align-items: center; gap: 8px; }
+.dok-urut { max-width: 90px; }
+.dok-item .act { display: flex; flex-wrap: wrap; gap: 6px; }

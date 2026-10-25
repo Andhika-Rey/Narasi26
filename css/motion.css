@@ -1,0 +1,45 @@
+/* Lapisan animasi NARASI. Semua aturan bergantung pada kelas yang dipasang JS
+   (pre-motion / motion), jadi tanpa JS atau dengan "kurangi gerak" halaman tampil statis. */
+
+/* ---- Hero tidak berkedip sebelum intro ---- */
+html.pre-motion .hero .eyebrow, html.pre-motion .hero .title, html.pre-motion .hero .tagline,
+html.pre-motion .hero .lead, html.pre-motion .hero .cta, html.pre-motion .hero .cd,
+html.pre-motion .hero .cd-cap, html.pre-motion .hero .loading, html.pre-motion .hero .portal,
+html.pre-motion .hero .stamp, html.pre-motion .hero .portal-toast,
+html.pre-motion .page-head > *, html.pre-motion .subnav, html.pre-motion .steps {
+  opacity: 0; animation: m-failsafe 0s linear 2.5s forwards;
+}
+@keyframes m-failsafe { to { opacity: 1; } }
+
+/* ---- Bilah progres gulir ---- */
+#m-progress { position: fixed; top: 0; left: 0; right: 0; height: 4px; z-index: 30; pointer-events: none;
+  background: var(--accent); transform-origin: 0 50%; transform: scaleX(0); will-change: transform; }
+
+/* ---- Sub-menu (About) dan langkah (Voting): bagian yang sedang dibaca ---- */
+html.motion .subnav a, html.motion .steps a { transition: background-color .2s, box-shadow .2s, color .2s; }
+
+/* ---- Garis timeline terisi saat digulir ---- */
+html.motion .timeline::after { content: ""; position: absolute; left: 11px; top: 8px; bottom: 8px; width: 3px;
+  background: var(--accent); transform-origin: 0 0; transform: scaleY(var(--p, 1)); }
+html.motion .tl .mk { position: relative; }
+html.motion .tl[data-state="berlangsung"] .mk::after { content: ""; position: absolute; inset: -4px; border-radius: 50%;
+  border: 3px solid var(--accent); animation: m-ping 1.8s ease-out infinite; }
+@keyframes m-ping { from { transform: scale(.9); opacity: .9; } to { transform: scale(1.8); opacity: 0; } }
+
+/* ---- Era: titik "kamu di sini" berdenyut ---- */
+html.motion .era .pill.now { animation: m-pulse 2.2s ease-in-out infinite; }
+@keyframes m-pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.06); } }
+
+/* ---- Lightbox ---- */
+html.motion .lb { will-change: opacity; }
+
+/* ---- Micro-interaction: tombol dan pilihan terasa menekan ---- */
+/* Hover tidak lagi menggeser tombol: bergesernya kotak tombol di bawah kursor membuat hover
+   hidup-mati bergantian di tepinya (kedip). Efek tekan dipindah ke bayangan, dan geser hanya saat ditekan. */
+.btn { transition: box-shadow .12s, background-color .12s; }
+.btn:hover { transform: none; box-shadow: 2px 2px 0 var(--shadow); }
+.btn:active { transform: translate(3px, 3px); box-shadow: 0 0 0 var(--shadow); }
+.opt { transition: background-color .15s, box-shadow .15s, transform .12s; }
+.opt:active { transform: scale(.99); }
+.opt:has(input:checked) { animation: m-pick .22s steps(4); }
+@keyframes m-pick { 50% { transform: translate(2px, 2px); } }

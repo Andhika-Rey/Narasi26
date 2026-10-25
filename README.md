@@ -2,18 +2,25 @@
 
 Situs statis (tanpa build) + Supabase sebagai backend. Semua logika voting ada di fungsi SQL (`supabase/schema.sql`).
 
-Jadwal: voting buka **Senin 26 Okt 2026 00:00 WIB**, tutup **Jumat 30 Okt 23:59:59 WIB**, hasil terbuka otomatis **13 Nov 2026 13:15 WIB** (semua bisa diubah di panel admin, tab Jadwal).
+Jadwal: voting buka **Senin 26 Okt 2026 00:00 WIB**, tutup **Jumat 30 Okt 23:59:59 WIB**, hasil terbuka otomatis di situs **13 Nov 2026 16:00 WIB**, setelah pengumuman Ketua (15.30) dan sayembara (15.45) di panggung (semua bisa diubah di panel admin, tab Jadwal).
 
 ## Isi folder
 
 ```
-index.html            situs publik + bilik suara + hasil
+index.html            Home: hero, tentang singkat, dokumentasi berjalan, ajakan voting
+about.html            About: 3 kegiatan (tab), timeline, rundown hari-H, materi seminar
+voting.html           Voting: galeri karya, pasangan calon, bilik suara, hasil
+kontak.html           Kontak: narahubung (WhatsApp/telepon), Instagram, FAQ
 admin.html            panel panitia
 css/ js/ vendor/ img/ aset
+css/pages.css         gaya komponen multi halaman (menu bawah ponsel, kartu, dll)
+css/motion.css, js/motion.js, js/motion-pre.js   lapisan animasi (GSAP lokal di vendor/)
 js/config.js          ISI DI SINI URL & anon key Supabase
 supabase/schema.sql   seluruh database + penyimpanan foto (aman dijalankan ulang)
-supabase/reset.sql    hapus data uji coba (suara, calon, karya) lewat SQL Editor
+supabase/reset.sql    hapus data uji coba (suara, calon, karya, dokumentasi) lewat SQL Editor
 ```
+
+Teks statis (rundown, narasumber, narahubung, FAQ) ada langsung di berkas HTML-nya. Timeline ada di `js/site.js` (blok CONTENT).
 
 ## Pemasangan (±20 menit)
 
@@ -41,11 +48,12 @@ Unggah folder ini ke GitHub lalu hubungkan ke Cloudflare Pages / Netlify / Verce
 ### 4. Isi data (panel `/admin.html`)
 1. **Pemilih** → pilih kelas → tempel daftar (satu baris: `NIM` atau `NIM, Nama`) → Impor.
 2. **Karya** → isi nama, unggah foto (boleh banyak; otomatis diperkecil), tempel tautan **YouTube** untuk video (diputar langsung di situs; unggah videonya ke YouTube dulu, mode *Unlisted* cukup). **Calon** → unggah foto Ketua dan Wakil; otomatis dipotong ke rasio 4:5 dari tengah gambar. Centang *Tayang* agar tampil dan bisa dipilih.
+   **Dokumentasi** → pilih beberapa foto sekaligus; langsung tampil sebagai kartu berjalan di Home. Beri keterangan, atur urutan, sembunyikan, atau hapus per foto. Selama belum ada foto, Home memakai 4 foto bawaan di `img/`.
 3. **Jadwal** → cek waktu dalam WIB.
 4. Uji coba dengan NIM palsu sebelum 26 Okt, lalu hapus suara uji lewat SQL Editor bila ada.
 
 ## Memperbarui dari versi sebelumnya
-Jalankan ulang seluruh `supabase/schema.sql` di SQL Editor (aman, tidak menghapus data). Ini menambah kolom foto dan bucket penyimpanan `narasi` (publik untuk dilihat; hanya admin yang boleh mengunggah). Lalu push file situs terbaru dan refresh keras.
+Jalankan ulang seluruh `supabase/schema.sql` di SQL Editor (aman, tidak menghapus data, boleh saat voting berjalan). Versi multi halaman menambah tabel `dokumentasi` dan memindah jam hasil dari 13.15 ke 16.00 WIB **hanya bila** jamnya masih nilai bawaan lama. Lalu push file situs terbaru dan refresh keras. Tautan lama seperti `situs/#voting` otomatis dialihkan ke `voting.html`.
 
 ## Menghapus data uji coba
 Buka `supabase/reset.sql`, jalankan blok yang dibutuhkan (A: semua suara, B: calon, C: karya). Admin, jadwal, dan daftar pemilih tidak ikut terhapus. Berkas foto bekas uji bersihkan lewat Supabase > Storage > `narasi`. Sebelum membuka voting resmi, jalankan blok A untuk memastikan suara kosong.
@@ -61,4 +69,7 @@ Buka `supabase/reset.sql`, jalankan blok yang dibutuhkan (A: semua suara, B: cal
 
 ## Pengujian
 
-Telah diuji pada Postgres 18 dengan 95 uji SQL (termasuk suara serentak, RLS, hasil tersembunyi, idempotensi) dan 82 uji browser end-to-end (voting, admin, auditor, fase, ponsel 390px, mode gelap). **Catatan jujur:** uji berjalan terhadap Postgres asli dengan lapisan penerjemah pengganti PostgREST/GoTrue, bukan Supabase sungguhan. Lakukan gladi di Supabase Anda sebelum 26 Okt (login admin, impor, satu suara uji, jeda, buka kunci).
+Diuji pada Postgres 18: 107 uji SQL (suara serentak, RLS, hasil tersembunyi, idempotensi, tabel dokumentasi, migrasi jam hasil), 175 uji browser end-to-end (voting, admin, auditor, fase, 4 halaman di ponsel 390px dan desktop, dokumentasi, tab, kartu narasumber, kontak, mode gelap), dijalankan dua kali: dengan animasi dan dengan *reduce motion*, plus 65 uji khusus animasi. **Catatan jujur:** uji berjalan terhadap Postgres asli dengan lapisan penerjemah pengganti PostgREST/GoTrue/Storage, bukan Supabase sungguhan. Lakukan gladi di Supabase Anda (login admin, unggah satu foto dokumentasi, satu suara uji, jeda).
+
+## Animasi
+Lapisan animasi (GSAP 3.15 + ScrollTrigger + SplitText, disimpan lokal di `vendor/`, lisensi di `vendor/GSAP-LICENSE.txt`) memberi: intro hero, bilah progres gulir, penanda navigasi, jendela retro yang terbuka saat digulir, garis timeline yang terisi, galeri/calon yang muncul bergantian, lightbox, dan batang hasil yang tumbuh. Bilik suara sengaja tenang. Otomatis mati bila perangkat memakai *reduce motion*. Kartu dokumentasi berjalan memakai animasi CSS (berhenti saat ditahan atau saat kursor di atasnya). Untuk mematikan animasi GSAP: hapus tag `motion-pre.js`, `motion.css`, dan skrip `vendor/gsap*`, `SplitText`, `ScrollTrigger`, `motion.js` dari keempat halaman.
