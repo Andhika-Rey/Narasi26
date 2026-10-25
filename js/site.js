@@ -32,8 +32,8 @@
   var PAGE = document.body.getAttribute("data-page") || "";
   /* Tautan lama situs satu halaman (mis. situs/#voting di bio Instagram) dialihkan ke halaman barunya. */
   if (PAGE === "home") {
-    var LAMA = { "#voting": "voting.html#voting", "#galeri": "voting.html#galeri", "#hasil": "voting.html#hasil", "#ketua": "about.html#k-ketua",
-      "#sayembara": "about.html#k-sayembara", "#timeline": "about.html#timeline", "#seminar": "about.html#seminar" };
+    var LAMA = { "#voting": "voting/#voting", "#galeri": "voting/#galeri", "#hasil": "voting/#hasil", "#ketua": "about/#k-ketua",
+      "#sayembara": "about/#k-sayembara", "#timeline": "about/#timeline", "#seminar": "about/#seminar" };
     if (LAMA[location.hash]) { location.replace(LAMA[location.hash]); return; }
     window.addEventListener("hashchange", function () { if (LAMA[location.hash]) location.replace(LAMA[location.hash]); });
   }
@@ -505,16 +505,16 @@
     var live = $("live");
     if (live) {
       live.hidden = false; live.setAttribute("data-fase", f);
-      live.href = f === "hasil" ? "voting.html#hasil" : (f === "buka" ? "voting.html#voting" : "voting.html");
+      live.href = f === "hasil" ? "voting/#hasil" : (f === "buka" ? "voting/#voting" : "voting/");
       $("live-txt").textContent = txt;
     }
     var cta = $("cta-vote-txt");
     if (cta) {
       cta.textContent = { sebelum: "Lihat karya & calon", buka: "Pilih sekarang", dijeda: "Ke halaman voting", tutup: "Lihat galeri", hasil: "Lihat hasil" }[f];
-      $("cta-vote").href = f === "hasil" ? "voting.html#hasil" : (f === "buka" ? "voting.html#voting" : "voting.html");
+      $("cta-vote").href = f === "hasil" ? "voting/#hasil" : (f === "buka" ? "voting/#voting" : "voting/");
     }
     var stamp = $("stamp-txt");
-    if (stamp && stamp.getAttribute("data-f") !== f) { stamp.textContent = STAMP[f] || STAMP.sebelum; stamp.setAttribute("data-f", f); $("stamp").href = f === "hasil" ? "voting.html#hasil" : "voting.html"; }
+    if (stamp && stamp.getAttribute("data-f") !== f) { stamp.textContent = STAMP[f] || STAMP.sebelum; stamp.setAttribute("data-f", f); $("stamp").href = f === "hasil" ? "voting/#hasil" : "voting/"; }
     var vs = $("vstat");
     if (vs) {
       vs.hidden = false; vs.setAttribute("data-fase", f);
