@@ -94,6 +94,66 @@ create table if not exists dokumentasi (
   dibuat      timestamptz not null default now()
 );
 
+-- Misi dan program kerja singkat pasangan calon (satu poin per baris).
+alter table calon add column if not exists misi   text check (misi   is null or char_length(misi)   <= 1500);
+alter table calon add column if not exists proker text check (proker is null or char_length(proker) <= 1500);
+
+-- Acara puncak: tanggal, jam, dan lokasi bisa diatur dari panel (tab Acara).
+alter table pengaturan add column if not exists acara_mulai   timestamptz not null default '2026-11-13 13:00:00+07';
+alter table pengaturan add column if not exists acara_selesai timestamptz not null default '2026-11-13 16:00:00+07';
+alter table pengaturan add column if not exists acara_lokasi  text not null default 'Perpustakaan Kampus Sudirman';
+alter table pengaturan drop constraint if exists pengaturan_acara_cek;
+alter table pengaturan add  constraint pengaturan_acara_cek check (acara_mulai < acara_selesai and char_length(acara_lokasi) between 1 and 120);
+
+-- Rundown hari-H. Jam dalam WIB, tanggalnya mengikuti acara_mulai.
+create table if not exists rundown (
+  id          uuid primary key default gen_random_uuid(),
+  mulai       time not null,
+  selesai     time,
+  kegiatan    text not null check (char_length(kegiatan) between 1 and 80),
+  keterangan  text check (keterangan is null or char_length(keterangan) <= 120),
+  jenis       text not null default 'biasa' check (jenis in ('biasa', 'pemateri', 'hiburan', 'pengumuman')),
+  dibuat      timestamptz not null default now(),
+  check (selesai is null or selesai >= mulai)
+);
+
+-- Pemateri mini seminar: foto (4:5), nama, dan judul materi.
+create table if not exists pemateri (
+  id      uuid primary key default gen_random_uuid(),
+  nama    text not null check (char_length(nama) between 1 and 80),
+  judul   text check (judul is null or char_length(judul) <= 120),
+  foto    text check (foto is null or foto ~ '^[a-z0-9_-]+/[a-z0-9-]+\.(jpg|jpeg|png|webp)$'),
+  urut    int not null default 0,
+  tayang  boolean not null default true,
+  dibuat  timestamptz not null default now()
+);
+
+-- Isi awal (hanya bila tabel masih kosong; aman dijalankan ulang).
+insert into rundown (mulai, selesai, kegiatan, keterangan, jenis)
+select v.m::time, v.s::time, v.k, v.ket, v.j from (values
+  ('12:30', '13:00', 'Registrasi dan persiapan', null, 'biasa'),
+  ('13:00', '13:10', 'Pembukaan', null, 'biasa'),
+  ('13:10', '13:30', 'Sambutan', null, 'biasa'),
+  ('13:30', '13:55', 'Pemateri 1', null, 'pemateri'),
+  ('13:55', '14:20', 'Pemateri 2', null, 'pemateri'),
+  ('14:20', '14:30', 'Ice breaking', null, 'biasa'),
+  ('14:30', '14:55', 'Pemateri 3', null, 'pemateri'),
+  ('14:55', '15:00', 'Pemberian sertifikat dan dokumen', null, 'biasa'),
+  ('15:00', '15:30', 'Games: Tebak Gaya', null, 'hiburan'),
+  ('15:30', '15:45', 'Pengumuman Ketua dan Wakil Ketua', null, 'pengumuman'),
+  ('15:45', '16:00', 'Pengumuman pemenang sayembara', null, 'pengumuman'),
+  ('16:00', null, 'Selesai', null, 'biasa')
+) as v(m, s, k, ket, j)
+where not exists (select 1 from rundown);
+
+insert into pemateri (nama, judul, urut)
+select v.n, v.j, v.u from (values
+  ('Farid Maulana Yusuf', 'Framework POLA: Presence, Observation, Learning, Action', 1),
+  ('Wahyu Daffa Mumtazsyah', 'Personal Branding: Managing Public Expectations', 2),
+  ('Regina Diya Azzahra', 'Personal Branding: Value to Impact', 3)
+) as v(n, j, u)
+where not exists (select 1 from pemateri);
+
 create table if not exists admin (
   user_id  uuid primary key references auth.users (id) on delete cascade,
   email    text not null,
@@ -232,13 +292,21 @@ language sql stable security definer set search_path = public, pg_temp as $$
       from karya where tayang), '[]'::jsonb),
     'calon', coalesce((
       select jsonb_agg(jsonb_build_object(
-        'id', id, 'ketua', ketua, 'wakil', wakil, 'visi', visi, 'tautan_kampanye', tautan_kampanye,
+        'id', id, 'ketua', ketua, 'wakil', wakil, 'visi', visi, 'misi', misi, 'proker', proker, 'tautan_kampanye', tautan_kampanye,
         'foto_ketua', foto_ketua, 'foto_wakil', foto_wakil)
         order by urut, dibuat)
       from calon where tayang), '[]'::jsonb),
     'dokumentasi', coalesce((
       select jsonb_agg(jsonb_build_object('id', id, 'foto', foto, 'keterangan', keterangan) order by urut, dibuat)
-      from dokumentasi where tayang), '[]'::jsonb)
+      from dokumentasi where tayang), '[]'::jsonb),
+    'acara', jsonb_build_object('mulai', p.acara_mulai, 'selesai', p.acara_selesai, 'lokasi', p.acara_lokasi),
+    'rundown', coalesce((
+      select jsonb_agg(jsonb_build_object('mulai', to_char(mulai, 'HH24:MI'), 'selesai', to_char(selesai, 'HH24:MI'),
+        'kegiatan', kegiatan, 'keterangan', keterangan, 'jenis', jenis) order by mulai, selesai nulls last, dibuat)
+      from rundown), '[]'::jsonb),
+    'pemateri', coalesce((
+      select jsonb_agg(jsonb_build_object('id', id, 'nama', nama, 'judul', judul, 'foto', foto) order by urut, dibuat)
+      from pemateri where tayang), '[]'::jsonb)
   )
   from pengaturan p where p.id = 1;
 $$;
@@ -484,6 +552,23 @@ begin
   return jsonb_build_object('ok', true);
 end $$;
 
+create or replace function admin_atur_acara(p_mulai timestamptz, p_selesai timestamptz, p_lokasi text) returns jsonb
+language plpgsql security definer set search_path = public, pg_temp as $$
+begin
+  perform _wajib_admin();
+  if p_mulai is null or p_selesai is null then
+    return jsonb_build_object('ok', false, 'error', 'tanggal_kosong');
+  end if;
+  if p_mulai >= p_selesai then
+    return jsonb_build_object('ok', false, 'error', 'mulai_harus_sebelum_selesai');
+  end if;
+  if coalesce(btrim(p_lokasi), '') = '' or char_length(btrim(p_lokasi)) > 120 then
+    return jsonb_build_object('ok', false, 'error', 'lokasi_tidak_valid');
+  end if;
+  update pengaturan set acara_mulai = p_mulai, acara_selesai = p_selesai, acara_lokasi = btrim(p_lokasi) where id = 1;
+  return jsonb_build_object('ok', true);
+end $$;
+
 -- Hanya auditor. Setiap pemanggilan dicatat.
 create or replace function auditor_suara(p_nim text default null) returns jsonb
 language plpgsql security definer set search_path = public, pg_temp as $$
@@ -512,7 +597,7 @@ begin
 end $$;
 
 -- ---------------------------------------------------------------------
--- 5. PENCATATAN PERUBAHAN KONTEN (karya, calon, dokumentasi, pengaturan)
+-- 5. PENCATATAN PERUBAHAN KONTEN (karya, calon, dokumentasi, rundown, pemateri, pengaturan)
 -- ---------------------------------------------------------------------
 create or replace function audit_trigger() returns trigger
 language plpgsql security definer set search_path = public, pg_temp as $$
@@ -535,6 +620,12 @@ create trigger trg_audit_calon after insert or update or delete on calon
 drop trigger if exists trg_audit_dokumentasi on dokumentasi;
 create trigger trg_audit_dokumentasi after insert or update or delete on dokumentasi
   for each row execute function audit_trigger();
+drop trigger if exists trg_audit_rundown on rundown;
+create trigger trg_audit_rundown after insert or update or delete on rundown
+  for each row execute function audit_trigger();
+drop trigger if exists trg_audit_pemateri on pemateri;
+create trigger trg_audit_pemateri after insert or update or delete on pemateri
+  for each row execute function audit_trigger();
 drop trigger if exists trg_audit_pengaturan on pengaturan;
 create trigger trg_audit_pengaturan after update on pengaturan
   for each row execute function audit_trigger();
@@ -547,6 +638,8 @@ alter table pemilih      enable row level security;
 alter table karya        enable row level security;
 alter table calon        enable row level security;
 alter table dokumentasi  enable row level security;
+alter table rundown      enable row level security;
+alter table pemateri     enable row level security;
 alter table pengaturan   enable row level security;
 alter table admin        enable row level security;
 alter table suara_karya  enable row level security;
@@ -559,7 +652,7 @@ revoke all on all sequences in schema public from anon, authenticated;
 
 -- Panitia (login) membaca dan mengelola konten lewat tabel
 grant select on kelas, pemilih, admin, log_audit to authenticated;
-grant select, insert, update, delete on karya, calon, dokumentasi to authenticated;
+grant select, insert, update, delete on karya, calon, dokumentasi, rundown, pemateri to authenticated;
 
 drop policy if exists p_kelas_baca on kelas;
 create policy p_kelas_baca on kelas for select to authenticated using (is_admin());
@@ -575,6 +668,12 @@ create policy p_calon_admin on calon for all to authenticated using (is_admin())
 
 drop policy if exists p_dok_admin on dokumentasi;
 create policy p_dok_admin on dokumentasi for all to authenticated using (is_admin()) with check (is_admin());
+
+drop policy if exists p_rundown_admin on rundown;
+create policy p_rundown_admin on rundown for all to authenticated using (is_admin()) with check (is_admin());
+
+drop policy if exists p_pemateri_admin on pemateri;
+create policy p_pemateri_admin on pemateri for all to authenticated using (is_admin()) with check (is_admin());
 
 drop policy if exists p_admin_diri on admin;
 create policy p_admin_diri on admin for select to authenticated using (user_id = auth.uid());
@@ -601,6 +700,7 @@ grant execute on function admin_impor(text, text)                 to authenticat
 grant execute on function admin_hapus_pemilih(text)               to authenticated;
 grant execute on function admin_buka_kunci(text)                  to authenticated;
 grant execute on function admin_atur(timestamptz, timestamptz, timestamptz, boolean) to authenticated;
+grant execute on function admin_atur_acara(timestamptz, timestamptz, text) to authenticated;
 grant execute on function auditor_suara(text)                     to authenticated;
 
 -- =====================================================================

@@ -31,7 +31,6 @@
       <a href="voting/">Voting</a>
       <a href="kontak/">Kontak</a>
     </nav>
-    <a class="top-ig ig-link" href="https://www.instagram.com/narasi2026.id/" target="_blank" rel="noopener" aria-label="Instagram NARASI">IG</a>
   </header>
 
   <main id="main">
@@ -40,26 +39,15 @@
       <p class="eyebrow mono">Bisnis Digital 2026 · Cakrawala University</p>
       <h1 class="title" id="judul">NARASI<span class="yr">2026</span></h1>
       <p class="tagline">Imajinasi untuk Lorong Waktu</p>
-      <p class="lead">Satu rangkaian untuk menentukan identitas angkatan, memilih ketua dan wakil, dan membekali mahasiswa lewat mini seminar. Semuanya bertemu di puncak acara.</p>
+      <p class="lead acara-info" id="acara-info">Puncak acara <b data-acara="tanggal">Jumat, 13 November 2026</b><span class="sep" aria-hidden="true"> · </span><span data-acara="jam">13.00–16.00 WIB</span><span class="sep" aria-hidden="true"> · </span><span data-acara="lokasi">Perpustakaan Kampus Sudirman</span></p>
       <div class="cta">
-        <a class="btn" href="voting/" id="cta-vote">
-          <svg width="16" height="20" viewBox="0 0 16 20" aria-hidden="true" shape-rendering="crispEdges"><path d="M0 0h2v2h2v2h2v2h2v2h2v2h-4v2h2v4H6v-4H4v2H2v2H0z" fill="currentColor"/></svg>
-          <span id="cta-vote-txt">Ke bilik suara</span>
-        </a>
-        <a class="btn alt" href="about/">Tentang acara</a>
+        <a class="btn" href="about/#rundown">Lihat rundown</a>
       </div>
-      <a class="live" id="live" href="voting/" hidden><span class="live-dot" aria-hidden="true"></span><span id="live-txt"></span></a>
       <div class="cd" role="timer" aria-label="Hitung mundur menuju puncak acara">
         <div><b id="cd-d">00</b><span>Hari</span></div>
         <div><b id="cd-h">00</b><span>Jam</span></div>
         <div><b id="cd-m">00</b><span>Menit</span></div>
         <div><b id="cd-s">00</b><span>Detik</span></div>
-      </div>
-      <p class="cd-cap mono muted">Menuju Jumat, 13 November 2026 · 13.00 WIB</p>
-      <div class="loading">
-        <div class="loading-row mono"><span>&gt; Loading future...</span><span id="load-pct">0%</span></div>
-        <div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="Perjalanan menuju puncak acara" id="load-bar"><i id="load-fill"></i></div>
-        <p class="cd-cap mono muted">Dihitung dari 12 Oktober sampai puncak acara</p>
       </div>
     </div>
 
@@ -87,29 +75,18 @@
           <circle cx="200" cy="200" r="6" fill="#A83E35" stroke="#29221E" stroke-width="2"/>
         </svg>
       </button>
-      <p class="portal-toast mono" id="portal-toast" role="status" aria-live="polite">Ketuk portal untuk menjelajah waktu</p>
-      <a class="stamp" id="stamp" href="voting/" aria-label="Ke halaman voting">
-        <svg viewBox="0 0 120 120" aria-hidden="true">
+      <p class="portal-toast mono" id="portal-toast" role="status" aria-live="polite"></p>
+      <span class="stamp" id="stamp" aria-hidden="true">
+        <svg viewBox="0 0 120 120">
           <defs><path id="stamp-c" d="M60,60 m-45,0 a45,45 0 1,1 90,0 a45,45 0 1,1 -90,0"/></defs>
           <circle cx="60" cy="60" r="58" class="stamp-bg"/>
           <circle cx="60" cy="60" r="31" class="stamp-in"/>
-          <g class="stamp-ring"><text textLength="282" lengthAdjust="spacing"><textPath href="#stamp-c" id="stamp-txt" textLength="282" lengthAdjust="spacing">VOTING 26–30 OKT · BILIK SUARA · </textPath></text></g>
+          <g class="stamp-ring"><text textLength="282" lengthAdjust="spacing"><textPath href="#stamp-c" id="stamp-txt" textLength="282" lengthAdjust="spacing">KETUK PORTAL · JELAJAHI WAKTU · </textPath></text></g>
           <path class="stamp-ic" d="M52 46h4v4h4v4h4v4h4v4h4v4h-8v4h4v8h-4v-8h-4v4h-4v4h-4z"/>
         </svg>
-      </a>
+      </span>
     </div>
   </section>
-
-  <div class="era" aria-label="Alur waktu">
-    <span class="lbl">Past</span>
-    <span class="pill">1980</span><span class="arrow">&gt;</span><span class="pill">2000</span>
-    <span class="arrow">&gt;&gt;</span>
-    <span class="lbl">Present</span>
-    <span class="pill now">2026 · kamu di sini</span>
-    <span class="arrow">&gt;&gt;</span>
-    <span class="lbl">Future</span>
-    <span class="pill">2050</span>
-  </div>
 
   <div class="stack">
     <section class="win" id="tentang" style="--tab: var(--teal)" aria-labelledby="h-tentang">
@@ -148,13 +125,12 @@
       </div>
     </section>
 
-    <section class="cta-big" aria-labelledby="h-cta">
-      <p class="mono cta-k">Bilik suara · 26–30 Oktober 2026</p>
+    <section class="cta-big" id="cta-big" aria-labelledby="h-cta">
+      <p class="mono cta-k" id="cta-k">Bilik suara</p>
       <h2 id="h-cta">Suaramu menentukan nama angkatan dan ketuanya.</h2>
-      <p>Lihat karya dan pasangan calon, lalu pilih dengan NIM dan kelasmu. Satu NIM, satu suara, final.</p>
+      <p id="cta-p">Lihat karya dan pasangan calon, lalu pilih dengan NIM dan kelasmu.</p>
       <div class="cta">
-        <a class="btn" href="voting/">Mulai voting</a>
-        <a class="btn alt ig-link" href="https://www.instagram.com/narasi2026.id/" target="_blank" rel="noopener">Ikuti @narasi2026.id</a>
+        <a class="btn" href="voting/" id="cta-btn">Ke halaman voting</a>
       </div>
     </section>
   </div>
@@ -164,12 +140,8 @@
   <footer class="foot">
     <div class="foot-brand">
       <a class="brand" href="./">NARASI<span>/2026</span></a>
-      <p>Imajinasi untuk Lorong Waktu. Program Studi Bisnis Digital · Angkatan 2026 · Cakrawala University.</p>
       <p class="mono muted">&gt; Loading future...<span class="cur" aria-hidden="true"></span></p>
     </div>
-    <nav class="foot-nav" aria-label="Tautan bawah">
-      <a href="./">Home</a><a href="about/">About</a><a href="voting/">Voting</a><a href="kontak/">Kontak</a>
-    </nav>
     <p class="foot-ig mono">Instagram <a class="ig-link ig-text" href="https://www.instagram.com/narasi2026.id/" target="_blank" rel="noopener">@narasi2026.id</a></p>
   </footer>
 </div>

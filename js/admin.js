@@ -39,7 +39,7 @@
     var c = e.code || "", m = e.message || String(e);
     if (c === "42501" || /akses_ditolak/.test(m)) return "Akses ditolak. Akun Anda tidak punya izin untuk tindakan ini.";
     if (c === "23001" || c === "23503") return "Data ini sudah dipakai oleh suara yang masuk, jadi tidak bisa dihapus. Sembunyikan dari galeri (hilangkan centang Tayang) bila perlu.";
-    if (c === "23514") return "Isian tidak valid. Tautan harus diawali http:// atau https://.";
+    if (c === "23514") return "Isian tidak valid. Periksa panjang teks, urutan jam, atau tautan (harus diawali http:// atau https://).";
     if (/Failed to fetch|NetworkError|jaringan/i.test(m)) return "Tidak bisa terhubung ke server. Periksa koneksi.";
     return m;
   }
@@ -114,7 +114,7 @@
   }
 
   var TABS = [
-    ["ringkasan", "Ringkasan"], ["pemilih", "Pemilih"], ["karya", "Karya"], ["calon", "Calon"], ["dokumentasi", "Dokumentasi"],
+    ["ringkasan", "Ringkasan"], ["pemilih", "Pemilih"], ["karya", "Karya"], ["calon", "Calon"], ["acara", "Acara"], ["pemateri", "Pemateri"], ["dokumentasi", "Dokumentasi"],
     ["jadwal", "Jadwal"], ["auditor", "Auditor"], ["log", "Log"]
   ];
   function bangunTab() {
@@ -131,7 +131,7 @@
     clear(panel);
     panel.appendChild(h("p", { class: "muted", text: "Memuat..." }));
     var mine = seq;
-    var jalan = { ringkasan: vRingkasan, pemilih: vPemilih, karya: vKarya, calon: vCalon, dokumentasi: vDokumentasi, jadwal: vJadwal, auditor: vAuditor, log: vLog }[nama];
+    var jalan = { ringkasan: vRingkasan, pemilih: vPemilih, karya: vKarya, calon: vCalon, acara: vAcara, pemateri: vPemateri, dokumentasi: vDokumentasi, jadwal: vJadwal, auditor: vAuditor, log: vLog }[nama];
     Promise.resolve(jalan(function () { return mine === seq; })).catch(function (e) { clear(panel); panel.appendChild(h("p", { class: "form-err", text: galat(e) })); });
   }
 
@@ -334,12 +334,12 @@
           form.appendChild(h("div", { class: "field full" }, [h("label", { for: "f-" + c.k, text: c.t }), ups[c.k].el]));
           return;
         }
-        var inp = c.area ? h("textarea", { class: "adm-input", id: "f-" + c.k, rows: "3" }) : h("input", { class: "adm-input", id: "f-" + c.k, type: c.num ? "number" : (c.url ? "url" : "text"), placeholder: c.ph || "" });
+        var inp = c.area ? h("textarea", { class: "adm-input", id: "f-" + c.k, rows: c.rows || "3", placeholder: c.ph || "" }) : h("input", { class: "adm-input", id: "f-" + c.k, type: c.num ? "number" : (c.url ? "url" : "text"), placeholder: c.ph || "" });
         fields[c.k] = inp;
-        form.appendChild(h("div", { class: "field" + (c.full ? " full" : "") }, [h("label", { for: "f-" + c.k, text: c.t + (c.req ? " *" : "") }), inp]));
+        form.appendChild(h("div", { class: "field" + (c.full ? " full" : "") }, [h("label", { for: "f-" + c.k, text: c.t + (c.req ? " *" : "") }), inp, c.hint ? h("p", { class: "muted up-hint", text: c.hint }) : null]));
       });
       var tayang = h("input", { type: "checkbox", id: "f-tayang" });
-      form.appendChild(h("div", { class: "field full" }, h("label", { class: "chk", for: "f-tayang" }, [tayang, "Tayang di situs publik dan bisa dipilih"])));
+      form.appendChild(h("div", { class: "field full" }, h("label", { class: "chk", for: "f-tayang" }, [tayang, cfg.labelTayang || "Tayang di situs publik dan bisa dipilih"])));
       var msg = h("p", { role: "status", class: "full" });
       var simpan = h("button", { type: "submit", class: "btn", text: "Tambah" });
       var batal = h("button", { type: "button", class: "btn alt", text: "Batal edit", hidden: true, onclick: function () { reset(); } });
@@ -413,10 +413,117 @@
         { k: "foto_ketua", t: "Foto Calon Ketua (4:5)", img: true, rasio: [4, 5] },
         { k: "foto_wakil", t: "Foto Calon Wakil Ketua (4:5)", img: true, rasio: [4, 5] },
         { k: "visi", t: "Visi singkat", area: true, full: true },
+        { k: "misi", t: "Misi", area: true, full: true, rows: "4", ph: "Satu misi per baris", hint: "Satu misi per baris. Tampil sebagai daftar bernomor." },
+        { k: "proker", t: "Program kerja singkat", area: true, full: true, rows: "4", ph: "Satu program per baris", hint: "Satu program per baris, singkat saja." },
         { k: "tautan_kampanye", t: "Tautan video kampanye", url: true, ph: "https://" },
         { k: "urut", t: "Urutan tampil", num: true, ph: "0" }
       ],
-      tampil: [{ t: "Pasangan", f: function (r) { return r.ketua + " & " + r.wakil; } }, { t: "Foto", f: function (r) { return h("span", { class: "tbl-pair" }, [r.foto_ketua ? h("img", { class: "tbl-img", src: fotoUrl(r.foto_ketua), alt: "" }) : "–", r.foto_wakil ? h("img", { class: "tbl-img", src: fotoUrl(r.foto_wakil), alt: "" }) : "–"]); } }, { t: "Visi", f: function (r) { return r.visi || ""; } }]
+      tampil: [{ t: "Pasangan", f: function (r) { return r.ketua + " & " + r.wakil; } }, { t: "Foto", f: function (r) { return h("span", { class: "tbl-pair" }, [r.foto_ketua ? h("img", { class: "tbl-img", src: fotoUrl(r.foto_ketua), alt: "" }) : "–", r.foto_wakil ? h("img", { class: "tbl-img", src: fotoUrl(r.foto_wakil), alt: "" }) : "–"]); } }, { t: "Visi", f: function (r) { return r.visi || ""; } }, { t: "Misi/Proker", f: function (r) { var n = function (x) { return x ? x.split(/\n+/).filter(function (l) { return l.trim(); }).length : 0; }; return n(r.misi) + " misi · " + n(r.proker) + " proker"; } }]
+    });
+  }
+  function vPemateri(a) {
+    return crud(a, {
+      tabel: "pemateri", judul: "Pemateri Seminar", labelTayang: "Tayang di halaman About",
+      bantuan: "Kartu pemateri di halaman About menampilkan foto, nama, dan judul materi. Foto otomatis dipotong ke 4:5 dari tengah gambar. Jam tampil tiap pemateri diatur di tab Acara (rundown).",
+      kolom: [
+        { k: "nama", t: "Nama pemateri", req: true },
+        { k: "judul", t: "Judul materi", full: true, ph: "Personal Branding: Value to Impact" },
+        { k: "foto", t: "Foto pemateri (4:5)", img: true, rasio: [4, 5] },
+        { k: "urut", t: "Urutan tampil", num: true, ph: "1" }
+      ],
+      tampil: [{ t: "Nama", f: function (r) { return r.nama; } }, { t: "Judul", f: function (r) { return r.judul || "–"; } }, { t: "Foto", f: function (r) { return r.foto ? h("img", { class: "tbl-img", src: fotoUrl(r.foto), alt: "" }) : "–"; } }]
+    });
+  }
+
+  /* ---------- Acara puncak: tanggal, jam, lokasi, rundown ---------- */
+  var JENIS = [["biasa", "Biasa"], ["pemateri", "Pemateri"], ["hiburan", "Hiburan / games"], ["pengumuman", "Pengumuman"]];
+  function vAcara(masihAktif) {
+    return Promise.all([rpc("admin_ringkasan"), Promise.resolve(sb.from("rundown").select("*").order("mulai", { ascending: true }).order("dibuat", { ascending: true }))]).then(function (rs) {
+      if (!masihAktif()) return;
+      if (rs[0].error) throw rs[0].error;
+      var p = rs[0].data.pengaturan;
+      clear(panel);
+      panel.appendChild(h("h1", { class: "h2", text: "Acara Puncak" }));
+      if (rs[1].error || p.acara_mulai === undefined) {
+        panel.appendChild(h("p", { class: "form-err", text: "Pengaturan acara belum ada di database. Jalankan ulang seluruh supabase/schema.sql di SQL Editor (aman, data tidak terhapus), lalu muat ulang halaman ini." }));
+        return;
+      }
+      panel.appendChild(h("p", { class: "muted", text: "Tanggal, jam, dan lokasi ini dipakai hitung mundur di Home, info hari-H, dan rundown di About. Semua jam dalam WIB." }));
+      var m = toWibInput(p.acara_mulai), sl = toWibInput(p.acara_selesai);
+      var tgl = h("input", { id: "a-tgl", class: "adm-input", type: "date", value: m.slice(0, 10) });
+      var jm = h("input", { id: "a-mulai", class: "adm-input", type: "time", value: m.slice(11, 16) });
+      var js = h("input", { id: "a-selesai", class: "adm-input", type: "time", value: sl.slice(11, 16) });
+      var lok = h("input", { id: "a-lokasi", class: "adm-input", type: "text", maxlength: "120", value: p.acara_lokasi });
+      var msg = h("p", { role: "status" });
+      var f = function (id, l, i) { return h("div", { class: "field" }, [h("label", { for: id, text: l }), i]); };
+      var save = h("button", { type: "button", class: "btn", id: "a-simpan", text: "Simpan acara", onclick: function () {
+        if (!tgl.value || !jm.value || !js.value) { pesan(msg, "Tanggal dan jam wajib diisi."); return; }
+        save.disabled = true;
+        rpc("admin_atur_acara", { p_mulai: fromWibInput(tgl.value + "T" + jm.value), p_selesai: fromWibInput(tgl.value + "T" + js.value), p_lokasi: lok.value }).then(function (x) {
+          save.disabled = false;
+          if (x.error) { pesan(msg, galat(x.error)); return; }
+          if (!x.data.ok) { pesan(msg, { mulai_harus_sebelum_selesai: "Jam mulai harus sebelum jam selesai.", lokasi_tidak_valid: "Lokasi wajib diisi (maks. 120 karakter).", tanggal_kosong: "Tanggal dan jam wajib diisi." }[x.data.error] || "Gagal menyimpan."); return; }
+          pesan(msg, "Acara disimpan.", true);
+        });
+      } });
+      panel.appendChild(h("div", { class: "adm-form" }, [f("a-tgl", "Tanggal", tgl), f("a-lokasi", "Lokasi", lok), f("a-mulai", "Jam mulai", jm), f("a-selesai", "Jam selesai", js)]));
+      panel.appendChild(h("p", { class: "row" }, [save, msg]));
+
+      // Rundown
+      // urutan sama dengan situs: jam mulai, lalu jam selesai (penanda tanpa jam selesai di akhir)
+      var rows = (rs[1].data || []).slice().sort(function (x, y) {
+        var a = String(x.mulai), b = String(y.mulai);
+        if (a !== b) return a < b ? -1 : 1;
+        if (!x.selesai !== !y.selesai) return x.selesai ? -1 : 1;
+        return String(x.selesai || "") < String(y.selesai || "") ? -1 : String(x.selesai || "") > String(y.selesai || "") ? 1 : 0;
+      });
+      var rmsg = h("p", { role: "status", id: "r-msg" });
+      panel.appendChild(h("h3", { text: "Rundown (" + rows.length + " kegiatan)" }));
+      panel.appendChild(h("p", { class: "muted", text: "Urutan otomatis mengikuti jam mulai. Kosongkan jam selesai untuk penanda seperti \"Selesai\". Jenis Pemateri, Hiburan, dan Pengumuman diberi warna penanda di situs." }));
+      panel.appendChild(rmsg);
+      function barisInput(row) {
+        var sel = h("select", { class: "adm-input", "aria-label": "Jenis" }, JENIS.map(function (j) { return h("option", { value: j[0], text: j[1] }); }));
+        sel.value = (row && row.jenis) || "biasa";
+        return {
+          mulai: h("input", { class: "adm-input", type: "time", "aria-label": "Jam mulai", value: row ? String(row.mulai).slice(0, 5) : "" }),
+          selesai: h("input", { class: "adm-input", type: "time", "aria-label": "Jam selesai", value: row && row.selesai ? String(row.selesai).slice(0, 5) : "" }),
+          kegiatan: h("input", { class: "adm-input", type: "text", maxlength: "80", "aria-label": "Kegiatan", placeholder: "Kegiatan", value: row ? row.kegiatan : "" }),
+          keterangan: h("input", { class: "adm-input", type: "text", maxlength: "120", "aria-label": "Keterangan", placeholder: "Keterangan (opsional)", value: row && row.keterangan ? row.keterangan : "" }),
+          jenis: sel
+        };
+      }
+      function data(b) {
+        if (!b.mulai.value || !b.kegiatan.value.trim()) return null;
+        return { mulai: b.mulai.value, selesai: b.selesai.value || null, kegiatan: b.kegiatan.value.trim(), keterangan: b.keterangan.value.trim() || null, jenis: b.jenis.value };
+      }
+      var list = h("div", { class: "run-ed" });
+      rows.forEach(function (row) {
+        var b = barisInput(row);
+        var simpan = h("button", { type: "button", class: "btn btn-s", text: "Simpan", onclick: function () {
+          var d = data(b); if (!d) { pesan(rmsg, "Jam mulai dan kegiatan wajib diisi."); return; }
+          simpan.disabled = true;
+          Promise.resolve(sb.from("rundown").update(d).eq("id", row.id)).then(function (x) {
+            simpan.disabled = false;
+            if (x.error) { pesan(rmsg, galat(x.error)); return; }
+            if (d.mulai !== String(row.mulai).slice(0, 5)) { buka(TAB); return; }
+            simpan.textContent = "Tersimpan"; setTimeout(function () { simpan.textContent = "Simpan"; }, 1500);
+          });
+        } });
+        var del = h("button", { type: "button", class: "btn alt btn-s", text: "Hapus", onclick: function () {
+          if (del.dataset.sure !== "1") { del.dataset.sure = "1"; del.textContent = "Yakin?"; del.className = "btn btn-d btn-s"; return; }
+          Promise.resolve(sb.from("rundown").delete().eq("id", row.id)).then(function (x) { if (x.error) pesan(rmsg, galat(x.error)); else buka(TAB); });
+        } });
+        list.appendChild(h("div", { class: "run-row" }, [b.mulai, b.selesai, b.kegiatan, b.keterangan, b.jenis, h("span", { class: "act" }, [simpan, del])]));
+      });
+      var nb = barisInput(null);
+      var tambah = h("button", { type: "button", class: "btn btn-s", id: "r-tambah", text: "Tambah", onclick: function () {
+        var d = data(nb); if (!d) { pesan(rmsg, "Jam mulai dan kegiatan wajib diisi."); return; }
+        tambah.disabled = true;
+        Promise.resolve(sb.from("rundown").insert(d)).then(function (x) { tambah.disabled = false; if (x.error) pesan(rmsg, galat(x.error)); else buka(TAB); });
+      } });
+      list.appendChild(h("div", { class: "run-row run-new" }, [nb.mulai, nb.selesai, nb.kegiatan, nb.keterangan, nb.jenis, h("span", { class: "act" }, [tambah])]));
+      panel.appendChild(h("div", { class: "run-head mono muted", "aria-hidden": "true" }, ["Mulai", "Selesai", "Kegiatan", "Keterangan", "Jenis", ""].map(function (t) { return h("span", { text: t }); })));
+      panel.appendChild(list);
     });
   }
 

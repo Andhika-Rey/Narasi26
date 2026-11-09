@@ -8,9 +8,8 @@
   /* ===================== Konten statis ===================== */
   var CONTENT = {
     instagram: "narasi2026.id",
-    event: "2026-11-13T13:00:00+07:00",
-    eventDate: "2026-11-13",
-    start: "2026-10-12T00:00:00+07:00",
+    // Nilai cadangan bila server belum terjangkau; yang dipakai adalah pengaturan di panel (tab Acara).
+    acara: { mulai: "2026-11-13T13:00:00+07:00", selesai: "2026-11-13T16:00:00+07:00", lokasi: "Perpustakaan Kampus Sudirman" },
     timeline: [
       { from: "2026-10-12", to: "2026-10-16", title: "Pendaftaran", detail: "Peserta sayembara identitas dan pasangan calon Ketua dan Wakil." },
       { from: "2026-10-19", to: "2026-10-23", title: "Pengumpulan karya dan visi misi", detail: "Paket identitas dan penyampaian visi misi pasangan calon." },
@@ -18,7 +17,7 @@
       { from: "2026-10-26", to: "2026-10-30", title: "Kampanye dan voting", detail: "Seluruh mahasiswa Bisnis Digital 2026 memberikan suara." },
       { from: "2026-11-02", to: "2026-11-06", title: "Rekapitulasi dan verifikasi", detail: "Panitia memeriksa data dan menyiapkan puncak acara." },
       { from: "2026-11-09", to: "2026-11-12", title: "Finalisasi persiapan", detail: "Seminar, perlengkapan, dan koordinasi hari-H." },
-      { from: "2026-11-13", to: "2026-11-13", title: "Puncak acara NARASI", detail: "Mini seminar, games, pengumuman Ketua dan Wakil, serta pemenang sayembara." }
+      { from: "acara", to: "acara", title: "Puncak acara NARASI", detail: "" }
     ]
   };
 
@@ -88,7 +87,7 @@
   }
   function buzz() { try { if (navigator.vibrate) navigator.vibrate(12); } catch (e) {} }
 
-  /* ===================== Backend (Home dan Voting saja) ===================== */
+  /* ===================== Backend ===================== */
   var CFG = window.NARASI_CONFIG || {};
   if (CFG.SUPABASE_URL) CFG.SUPABASE_URL = String(CFG.SUPABASE_URL).trim().replace(/\/(rest|auth)\/v1.*$/, "").replace(/\/+$/, "");
   var sb = null;
@@ -97,7 +96,7 @@
       sb = window.supabase.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_ANON_KEY, {
         auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }
       });
-    } else if (PAGE === "home" || PAGE === "voting") {
+    } else if (PAGE) {
       console.warn("NARASI: js/config.js belum diisi. Bilik suara dan galeri dinonaktifkan.");
     }
   } catch (e) { console.error(e); }
@@ -202,11 +201,13 @@
     }
     if (st.calon.length) {
       can.appendChild(h("div", { class: "cards cards-calon" }, st.calon.map(function (c) {
-        return h("article", { class: "cell" }, [
-          h("span", { class: "k mono", text: "Pasangan calon" }),
-          pasangan(c, false),
-          h("h3", { text: c.ketua + " & " + c.wakil }),
-          c.visi ? h("p", { text: c.visi }) : null, videoBlok(c.tautan_kampanye, "Lihat kampanye")
+        var foto = pasangan(c, false);   // keterangan foto sudah memuat nama, jadi judul nama hanya bila tanpa foto
+        return h("article", { class: "cell calon-card" }, [
+          h("span", { class: "k mono", text: "Pasangan " + (st.calon.indexOf(c) + 1) }),
+          foto, foto ? null : h("h3", { text: c.ketua + " & " + c.wakil }),
+          c.visi ? h("div", { class: "vmp" }, [h("h4", { text: "Visi" }), h("p", { text: c.visi })]) : null,
+          poin("Misi", c.misi, "ol"), poin("Program kerja", c.proker, "ul"),
+          videoBlok(c.tautan_kampanye, "Lihat kampanye")
         ]);
       })));
     } else {
@@ -215,6 +216,12 @@
   }
 
   /* Deret foto karya; klik membuka lightbox. */
+  /* Misi/proker: satu poin per baris di panel, tampil sebagai daftar. */
+  function poin(judul, teks, tag) {
+    var baris = String(teks || "").split(/\r?\n/).map(function (x) { return x.replace(/^\s*(?:[-*•]|\d+[.)])\s*/, "").trim(); }).filter(Boolean);
+    if (!baris.length) return null;
+    return h("div", { class: "vmp" }, [h("h4", { text: judul }), h(tag, { class: "vmp-list" }, baris.map(function (b) { return h("li", { text: b }); }))]);
+  }
   function fotoStrip(list, alt) {
     var urls = (list || []).map(fotoUrl).filter(Boolean);
     if (!urls.length) return null;
@@ -484,43 +491,57 @@
   }
 
   /* ===================== Status fase: Home (CTA, stiker) dan Voting (ringkas) ===================== */
-  var STAMP = {
-    sebelum: "VOTING 26 OKT · SIAPKAN PILIHAN · ",
-    buka: "VOTING DIBUKA · PILIH SEKARANG · ",
-    dijeda: "VOTING DIJEDA · CEK LAGI NANTI · ",
-    tutup: "VOTING DITUTUP · HASIL 13 NOV · ",
-    hasil: "HASIL SUDAH KELUAR · LIHAT · "
-  };
   function faseKini(st) { return st.hasil_terbuka ? "hasil" : st.fase; }
   function renderFase() {
     var st = S.status; if (!st) return;
-    var f = faseKini(st), now = nowMs();
-    var txt = {
-      sebelum: "Voting dibuka " + fmtPendek(st.buka) + " · " + sisa(T(st.buka) - now),
-      buka: "Voting sedang dibuka · tutup " + fmtPendek(st.tutup),
-      dijeda: "Voting dijeda sementara oleh panitia",
-      tutup: "Voting ditutup · hasil " + fmtPendek(st.hasil_at),
-      hasil: "Hasil voting sudah keluar"
-    }[f] || "";
-    var live = $("live");
-    if (live) {
-      live.hidden = false; live.setAttribute("data-fase", f);
-      live.href = f === "hasil" ? "voting/#hasil" : (f === "buka" ? "voting/#voting" : "voting/");
-      $("live-txt").textContent = txt;
-    }
-    var cta = $("cta-vote-txt");
-    if (cta) {
-      cta.textContent = { sebelum: "Lihat karya & calon", buka: "Pilih sekarang", dijeda: "Ke halaman voting", tutup: "Lihat galeri", hasil: "Lihat hasil" }[f];
-      $("cta-vote").href = f === "hasil" ? "voting/#hasil" : (f === "buka" ? "voting/#voting" : "voting/");
-    }
-    var stamp = $("stamp-txt");
-    if (stamp && stamp.getAttribute("data-f") !== f) { stamp.textContent = STAMP[f] || STAMP.sebelum; stamp.setAttribute("data-f", f); $("stamp").href = f === "hasil" ? "voting/#hasil" : "voting/"; }
-    var vs = $("vstat");
-    if (vs) {
-      vs.hidden = false; vs.setAttribute("data-fase", f);
-      $("vstat-chip").textContent = { sebelum: "Segera", buka: "Dibuka", dijeda: "Dijeda", tutup: "Ditutup", hasil: "Hasil" }[f];
-      $("vstat-txt").textContent = txt;
-    }
+    var f = faseKini(st), box = $("cta-big");
+    if (!box || box.getAttribute("data-fase") === f) return;
+    box.setAttribute("data-fase", f);
+    var ajak = "Suaramu menentukan nama angkatan dan ketuanya.";
+    var isi = {
+      sebelum: ["Bilik suara dibuka " + fmtPendek(st.buka), ajak, "Sambil menunggu, kenali dulu karya dan pasangan calonnya.", "Lihat karya & calon", "voting/"],
+      buka: ["Bilik suara dibuka sampai " + fmtPendek(st.tutup), ajak, "Pilih dengan NIM dan kelasmu. Satu NIM, satu suara, final.", "Pilih sekarang", "voting/#voting"],
+      dijeda: ["Bilik suara dijeda", ajak, "Panitia menjeda voting sementara. Coba lagi sebentar lagi.", "Ke halaman voting", "voting/"],
+      tutup: ["Voting ditutup", "Terima kasih sudah memilih.", "Pemenangnya diumumkan di puncak acara.", "Lihat galeri karya", "voting/#galeri"],
+      hasil: ["Hasil voting", "Identitas dan ketua angkatan sudah terpilih.", "Lihat perolehan suara lengkapnya.", "Lihat hasil", "voting/#hasil"]
+    }[f];
+    if (!isi) return;
+    $("cta-k").textContent = isi[0]; $("h-cta").textContent = isi[1]; $("cta-p").textContent = isi[2];
+    $("cta-btn").textContent = isi[3]; $("cta-btn").href = isi[4];
+  }
+
+  /* ===================== Acara puncak: tanggal, jam, lokasi (dari panel) ===================== */
+  var fmtTgl = new Intl.DateTimeFormat("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: "Asia/Jakarta" });
+  var fmtJam = new Intl.DateTimeFormat("id-ID", { hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZone: "Asia/Jakarta" });
+  function acara() { return (S.status && S.status.acara) || CONTENT.acara; }
+  function tglAcara() { return fmtYmd.format(new Date(acara().mulai)).slice(0, 10); }   // YYYY-MM-DD dalam WIB
+  function renderAcara() {
+    var a = acara();
+    var isi = {
+      tanggal: fmtTgl.format(new Date(a.mulai)),
+      jam: fmtJam.format(new Date(a.mulai)).replace(":", ".") + "–" + fmtJam.format(new Date(a.selesai)).replace(":", ".") + " WIB",
+      lokasi: a.lokasi
+    };
+    qa("[data-acara]").forEach(function (e) { var v = isi[e.getAttribute("data-acara")]; if (v && e.textContent !== v) e.textContent = v; });
+  }
+
+  /* ===================== About: pemateri (foto, nama, judul dari panel) ===================== */
+  var WARNA = ["var(--orange)", "var(--teal)", "var(--red)", "var(--olive)", "var(--yellow)"];
+  function inisial(n) { return String(n).trim().split(/\s+/).slice(0, 2).map(function (w) { return w.charAt(0); }).join("").toUpperCase(); }
+  function renderPemateri() {
+    var box = $("spk-list"); if (!box || !S.status || !Array.isArray(S.status.pemateri)) return;
+    var list = S.status.pemateri, key = JSON.stringify(list);
+    if (box.getAttribute("data-k") === key) return;
+    box.setAttribute("data-k", key);
+    clear(box);
+    if (!list.length) { box.appendChild(nosignal("Segera diumumkan", "Pemateri mini seminar diumumkan di sini.")); return; }
+    list.forEach(function (p, i) {
+      var u = fotoUrl(p.foto);
+      box.appendChild(h("article", { class: "spk", style: "--c:" + WARNA[i % WARNA.length] }, [
+        h("div", { class: "spk-ph" }, [h("b", { class: "spk-no mono", title: "Pemateri " + (i + 1) + " di rundown", text: pad(i + 1) }), u ? h("img", { src: u, alt: "Foto " + p.nama, loading: "lazy", decoding: "async", width: "480", height: "600" }) : h("span", { class: "spk-av", "aria-hidden": "true", text: inisial(p.nama) })]),
+        h("div", { class: "spk-tx" }, [h("h3", { text: p.nama }), p.judul ? h("p", { class: "spk-topic", text: p.judul }) : null])
+      ]));
+    });
   }
 
   /* ===================== Home: dokumentasi berjalan ===================== */
@@ -542,9 +563,10 @@
     var key = JSON.stringify(items.map(function (i) { return i.src + i.cap; }));
     if (key === S.dokKey || !items.length) return;
     S.dokKey = key;
-    var rows = items.length >= 6
+    // Foto dibagi ke dua baris (tidak ada foto yang tampil di dua baris sekaligus); satu foto = satu baris.
+    var rows = items.length >= 2
       ? [items.filter(function (_, i) { return i % 2 === 0; }), items.filter(function (_, i) { return i % 2 === 1; })]
-      : [items.slice(), items.slice().reverse()];
+      : [items.slice()];
     clear(box);
     rows.forEach(function (row, r) {
       var seq = []; while (seq.length < 8) seq = seq.concat(row);
@@ -588,16 +610,13 @@
   })();
 
   /* ===================== Home: hitung mundur ===================== */
-  var EVENT = T(CONTENT.event), START = T(CONTENT.start);
   function tickHome(now) {
     if (!$("cd-d")) return;
-    var s = Math.max(0, Math.floor((EVENT - now) / 1000));
+    var s = Math.max(0, Math.floor((T(acara().mulai) - now) / 1000));
     $("cd-d").textContent = pad(Math.floor(s / 86400));
     $("cd-h").textContent = pad(Math.floor(s % 86400 / 3600));
     $("cd-m").textContent = pad(Math.floor(s % 3600 / 60));
     $("cd-s").textContent = pad(s % 60);
-    var pct = Math.max(0, Math.min(100, Math.round((now - START) / (EVENT - START) * 100)));
-    $("load-pct").textContent = pct + "%"; $("load-fill").style.width = pct + "%"; $("load-bar").setAttribute("aria-valuenow", pct);
   }
 
   /* ===================== About: timeline ===================== */
@@ -610,36 +629,53 @@
   var LABEL = { selesai: "Selesai", berlangsung: "Berlangsung", berikutnya: "Berikutnya", mendatang: "Mendatang" };
   function renderTimeline() {
     var ol = $("tl-list"); if (!ol) return;
-    var now = nowMs(), firstNext = -1;
-    CONTENT.timeline.forEach(function (it, i) { if (firstNext < 0 && T(it.from + "T00:00:00+07:00") > now) firstNext = i; });
-    var key = CONTENT.timeline.map(function (it, i) {
+    var now = nowMs(), firstNext = -1, tA = tglAcara();
+    var TL = CONTENT.timeline.map(function (it) { return it.from === "acara" ? { from: tA, to: tA, title: it.title, detail: it.detail } : it; });
+    TL.forEach(function (it, i) { if (firstNext < 0 && T(it.from + "T00:00:00+07:00") > now) firstNext = i; });
+    var key = TL.map(function (it, i) {
       var s = T(it.from + "T00:00:00+07:00"), e = T(it.to + "T23:59:59+07:00");
       return now > e ? "selesai" : now >= s ? "berlangsung" : (i === firstNext ? "berikutnya" : "mendatang");
     });
-    if (ol.getAttribute("data-k") === key.join()) return;
-    ol.setAttribute("data-k", key.join());
+    if (ol.getAttribute("data-k") === key.join() + tA) return;
+    ol.setAttribute("data-k", key.join() + tA);
     clear(ol);
-    CONTENT.timeline.forEach(function (it, i) {
+    TL.forEach(function (it, i) {
       var st = key[i];
       ol.appendChild(h("li", { class: "tl", "data-state": st }, [
         h("span", { class: "mk", "aria-hidden": "true" }),
         h("div", { class: "card" }, [
           h("div", { class: "when" }, [h("span", { class: "mono", text: rangeText(it.from, it.to) }), h("span", { class: "chip", text: LABEL[st] })]),
-          h("h3", { text: it.title }), h("p", { text: it.detail })
+          h("h3", { text: it.title }), it.detail ? h("p", { text: it.detail }) : null
         ])
       ]));
     });
   }
 
   /* ===================== About: rundown, tandai yang sedang berjalan di hari-H ===================== */
+  function menit(a, b) { var x = a.split(":"), y = b.split(":"); return (+y[0] * 60 + +y[1]) - (+x[0] * 60 + +x[1]); }
+  function bangunRundown(ol, rows) {
+    var key = JSON.stringify(rows);
+    if (ol.getAttribute("data-k") === key) return;
+    ol.setAttribute("data-k", key);
+    clear(ol);
+    rows.forEach(function (r) {
+      var jam = r.mulai.replace(":", ".") + (r.selesai ? "–" + r.selesai.replace(":", ".") : "");
+      ol.appendChild(h("li", { "data-s": r.mulai, "data-e": r.selesai || r.mulai, "data-jenis": r.jenis || "biasa" }, [
+        h("time", { text: jam }),
+        h("span", null, [r.kegiatan, r.keterangan ? " " : null, r.keterangan ? h("small", { text: r.keterangan }) : null]),
+        h("i", { text: r.selesai ? menit(r.mulai, r.selesai) + " mnt" : "" })
+      ]));
+    });
+  }
   function renderRundown() {
     var ol = $("run-list"); if (!ol) return;
-    var p = fmtYmd.format(new Date(nowMs())).split(" "), hari = p[0], jam = p[1];
+    if (S.status && Array.isArray(S.status.rundown) && S.status.rundown.length) bangunRundown(ol, S.status.rundown);
+    var p = fmtYmd.format(new Date(nowMs())).split(" "), hari = p[0], jam = p[1], tA = tglAcara();
     var info = $("run-now"), now = null;
     qa("li", ol).forEach(function (li) {
       var s = li.getAttribute("data-s"), e = li.getAttribute("data-e"), st = "";
-      if (hari > CONTENT.eventDate || (hari === CONTENT.eventDate && jam >= e && s !== e) || (hari === CONTENT.eventDate && s === e && jam >= s)) st = "lewat";
-      else if (hari === CONTENT.eventDate && jam >= s && jam < e) { st = "kini"; now = li; }
+      if (hari > tA || (hari === tA && jam >= e && s !== e) || (hari === tA && s === e && jam >= s)) st = "lewat";
+      else if (hari === tA && jam >= s && jam < e) { st = "kini"; now = li; }
       if (li.getAttribute("data-st") !== st) {
         if (st) li.setAttribute("data-st", st); else li.removeAttribute("data-st");
         var old = li.querySelector(".run-badge"); if (old) old.remove();
@@ -683,24 +719,6 @@
     window.addEventListener("hashchange", dariHash);
   })();
 
-  /* ===================== About: kartu narasumber dibalik ===================== */
-  qa(".spk").forEach(function (card) {
-    var front = card.querySelector(".front"), back = card.querySelector(".back");
-    var open = card.querySelector(".front .spk-btn"), close = card.querySelector(".back .spk-btn");
-    card.classList.add("flip-ready");
-    back.inert = true; back.setAttribute("aria-hidden", "true");
-    function balik(ke) {
-      var b = ke === "back";
-      card.classList.toggle("flipped", b);
-      front.inert = b; back.inert = !b;
-      front.setAttribute("aria-hidden", b ? "true" : "false"); back.setAttribute("aria-hidden", b ? "false" : "true");
-      open.setAttribute("aria-expanded", b ? "true" : "false");
-      buzz();
-      setTimeout(function () { (b ? close : open).focus({ preventScroll: true }); }, REDUCE ? 0 : 260);
-    }
-    front.addEventListener("click", function () { balik("back"); });
-    close.addEventListener("click", function (e) { e.stopPropagation(); balik("front"); });
-  });
 
   /* ===================== About: Personal Statement ===================== */
   (function () {
@@ -738,7 +756,7 @@
       if (r.error || !r.data) { S.error = true; renderGaleri(); renderVote(); renderDok(); return; }
       S.error = false; S.status = r.data;
       S.offset = new Date(r.data.sekarang).getTime() - Date.now();
-      renderGaleri(); renderVote(); renderFase(); renderDok(); muatHasil();
+      renderGaleri(); renderVote(); renderFase(); renderDok(); renderAcara(); renderPemateri(); renderTimeline(); renderRundown(); tickHome(nowMs()); muatHasil();
     });
   }
 
@@ -752,15 +770,14 @@
       if (cd) cd.textContent = st.fase === "sebelum" ? sisa(T(st.buka) - now) : sisa(T(st.tutup) - now);
       var lewat = (st.fase === "sebelum" && now >= T(st.buka)) || (st.fase === "buka" && now > T(st.tutup)) || (!st.hasil_terbuka && now >= Math.max(T(st.hasil_at), T(st.tutup)));
       if (lewat && Date.now() - S.lastLoad > 5000) muatStatus();
-      if (st.fase === "sebelum" && $("live")) renderFase();
     }
   }
 
   /* ===================== Mulai ===================== */
-  renderTimeline(); renderRundown(); renderGaleri(); renderVote(); renderDok(); tick();
+  renderAcara(); renderTimeline(); renderRundown(); renderGaleri(); renderVote(); renderDok(); tick();
   setInterval(tick, 1000);
   if ($("tl-list") || $("run-list")) setInterval(function () { renderTimeline(); renderRundown(); }, 30000);
-  if (sb && (PAGE === "home" || PAGE === "voting")) {
+  if (sb && PAGE) {
     muatStatus();
     setInterval(function () { if (!inBallot() && V.step !== "selesai") muatStatus(); }, 60000);
   }

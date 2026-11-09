@@ -57,3 +57,16 @@ textarea.adm-input { min-height: 160px; font-family: var(--font-mono); resize: v
 .dok-u { display: flex; align-items: center; gap: 8px; }
 .dok-urut { max-width: 90px; }
 .dok-item .act { display: flex; flex-wrap: wrap; gap: 6px; }
+
+/* Rundown editor */
+.run-head, .run-row { display: grid; grid-template-columns: 128px 128px minmax(0, 1.4fr) minmax(0, 1.1fr) 150px auto; gap: 8px; align-items: center; }
+.run-head { margin: 6px 0 4px; font-size: .68rem; }
+.run-ed { display: grid; gap: 8px; }
+.run-row { padding: 8px; border: 2px solid var(--edge); border-radius: 6px; background: var(--bg); }
+.run-row .act { display: flex; gap: 6px; }
+.run-new { border-style: dashed; }
+@media (max-width: 900px) {
+  .run-head { display: none; }
+  .run-row { grid-template-columns: 1fr 1fr; }
+  .run-row > input[type=text], .run-row > select, .run-row .act { grid-column: 1 / -1; }
+}

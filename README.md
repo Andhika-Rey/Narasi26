@@ -22,7 +22,7 @@ supabase/reset.sql    hapus data uji coba (suara, calon, karya, dokumentasi) lew
 
 Tiap halaman berada di foldernya sendiri supaya alamatnya bersih tanpa `.html` (mis. `situsanda/voting/`) di semua hosting tanpa pengaturan tambahan. Untuk pratinjau lokal, buka lewat server (`npx serve` di folder ini), bukan klik dua kali berkas.
 
-Teks statis (rundown, narasumber, narahubung, FAQ) ada langsung di berkas HTML-nya. Timeline ada di `js/site.js` (blok CONTENT).
+Teks statis (narahubung, FAQ, ketentuan sayembara) ada langsung di berkas HTML-nya. Acara, rundown, pemateri, karya, calon, dan dokumentasi diatur dari panel. Timeline ada di `js/site.js` (blok CONTENT).
 
 ## Pemasangan (±20 menit)
 
@@ -45,17 +45,20 @@ window.NARASI_CONFIG = { SUPABASE_URL: "https://xxxx.supabase.co", SUPABASE_ANON
 Hanya anon key. **Jangan pernah** menaruh `service_role` di sini.
 
 ### 3. Deploy
-Unggah folder ini ke GitHub lalu hubungkan ke Cloudflare Pages / Netlify / Vercel (build command kosong, output directory `/`). Jika memakai domain kustom untuk Supabase, tambahkan domain itu ke `connect-src` pada tag CSP di `index.html` dan `admin.html`.
+Unggah folder ini ke GitHub lalu hubungkan ke Cloudflare Pages / Netlify / Vercel (build command kosong, output directory `/`). Jika memakai domain kustom untuk Supabase, tambahkan domain itu ke `connect-src` pada tag CSP di `index.html`, `about/index.html`, `voting/index.html`, `kontak/index.html`, dan `admin.html`.
 
 ### 4. Isi data (panel `/admin.html`)
 1. **Pemilih** → pilih kelas → tempel daftar (satu baris: `NIM` atau `NIM, Nama`) → Impor.
 2. **Karya** → isi nama, unggah foto (boleh banyak; otomatis diperkecil), tempel tautan **YouTube** untuk video (diputar langsung di situs; unggah videonya ke YouTube dulu, mode *Unlisted* cukup). **Calon** → unggah foto Ketua dan Wakil; otomatis dipotong ke rasio 4:5 dari tengah gambar. Centang *Tayang* agar tampil dan bisa dipilih.
+   **Acara** → tanggal, jam mulai–selesai, dan lokasi puncak acara (dipakai hitung mundur di Home, info hari-H, FAQ) serta seluruh baris rundown: ubah, tambah, atau hapus; urutan otomatis mengikuti jam.
+   **Pemateri** → nama, judul materi, dan foto (otomatis dipotong 4:5). Kartu di About hanya menampilkan foto, nama, dan judul; nomornya sama dengan urutan "Pemateri 1/2/3" di rundown.
+   **Calon** juga punya isian **Misi** dan **Program kerja singkat** (satu poin per baris), tampil sebagai daftar di kartu calon.
    **Dokumentasi** → pilih beberapa foto sekaligus; langsung tampil sebagai kartu berjalan di Home. Beri keterangan, atur urutan, sembunyikan, atau hapus per foto. Selama belum ada foto, Home memakai 4 foto bawaan di `img/`.
 3. **Jadwal** → cek waktu dalam WIB.
 4. Uji coba dengan NIM palsu sebelum 26 Okt, lalu hapus suara uji lewat SQL Editor bila ada.
 
 ## Memperbarui dari versi sebelumnya
-Jalankan ulang seluruh `supabase/schema.sql` di SQL Editor (aman, tidak menghapus data, boleh saat voting berjalan). Versi multi halaman menambah tabel `dokumentasi` dan memindah jam hasil dari 13.15 ke 16.00 WIB **hanya bila** jamnya masih nilai bawaan lama. Lalu push file situs terbaru dan refresh keras. Tautan lama seperti `situs/#voting` otomatis dialihkan ke `situs/voting/`.
+Jalankan ulang seluruh `supabase/schema.sql` di SQL Editor (aman, tidak menghapus data, boleh saat voting berjalan). Versi terbaru menambah tabel `rundown` dan `pemateri` (terisi otomatis dengan rundown dan pemateri sekarang), kolom acara di `pengaturan`, serta kolom `misi` dan `proker` di `calon`. Versi sebelumnya menambah tabel `dokumentasi` dan memindah jam hasil dari 13.15 ke 16.00 WIB **hanya bila** jamnya masih nilai bawaan lama. Lalu push file situs terbaru dan refresh keras. Tautan lama seperti `situs/#voting` otomatis dialihkan ke `situs/voting/`.
 
 ## Menghapus data uji coba
 Buka `supabase/reset.sql`, jalankan blok yang dibutuhkan (A: semua suara, B: calon, C: karya). Admin, jadwal, dan daftar pemilih tidak ikut terhapus. Berkas foto bekas uji bersihkan lewat Supabase > Storage > `narasi`. Sebelum membuka voting resmi, jalankan blok A untuk memastikan suara kosong.
@@ -71,7 +74,7 @@ Buka `supabase/reset.sql`, jalankan blok yang dibutuhkan (A: semua suara, B: cal
 
 ## Pengujian
 
-Diuji pada Postgres 18: 107 uji SQL (suara serentak, RLS, hasil tersembunyi, idempotensi, tabel dokumentasi, migrasi jam hasil), 194 uji browser end-to-end (voting, admin, auditor, fase, 4 halaman di ponsel 390px dan desktop, dokumentasi, tab, kartu narasumber, kontak, mode gelap), dijalankan dua kali: dengan animasi dan dengan *reduce motion*, plus 65 uji khusus animasi. **Catatan jujur:** uji berjalan terhadap Postgres asli dengan lapisan penerjemah pengganti PostgREST/GoTrue/Storage, bukan Supabase sungguhan. Lakukan gladi di Supabase Anda (login admin, unggah satu foto dokumentasi, satu suara uji, jeda).
+Diuji pada Postgres 18: 128 uji SQL (suara serentak, RLS, hasil tersembunyi, idempotensi, tabel dokumentasi, migrasi jam hasil), 225 uji browser end-to-end (termasuk pemeriksaan otomatis bahwa tidak ada teks yang berulang di satu halaman) (voting, admin, auditor, fase, 4 halaman di ponsel 390px dan desktop, dokumentasi, tab, kartu narasumber, kontak, mode gelap), dijalankan dua kali: dengan animasi dan dengan *reduce motion*, plus 61 uji khusus animasi. **Catatan jujur:** uji berjalan terhadap Postgres asli dengan lapisan penerjemah pengganti PostgREST/GoTrue/Storage, bukan Supabase sungguhan. Lakukan gladi di Supabase Anda (login admin, unggah satu foto dokumentasi, satu suara uji, jeda).
 
 ## Animasi
 Lapisan animasi (GSAP 3.15 + ScrollTrigger + SplitText, disimpan lokal di `vendor/`, lisensi di `vendor/GSAP-LICENSE.txt`) memberi: intro hero, bilah progres gulir, penanda navigasi, jendela retro yang terbuka saat digulir, garis timeline yang terisi, galeri/calon yang muncul bergantian, lightbox, dan batang hasil yang tumbuh. Bilik suara sengaja tenang. Otomatis mati bila perangkat memakai *reduce motion*. Kartu dokumentasi berjalan memakai animasi CSS (berhenti saat ditahan atau saat kursor di atasnya). Untuk mematikan animasi GSAP: hapus tag `motion-pre.js`, `motion.css`, dan skrip `vendor/gsap*`, `SplitText`, `ScrollTrigger`, `motion.js` dari keempat halaman.
