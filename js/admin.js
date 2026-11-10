@@ -636,9 +636,260 @@
   }
 
   /* ---------- Auditor ---------- */
+  /* Warna seri (divalidasi: kontras, buta warna, mode terang & gelap). Warna mengikuti surat suara, bukan peringkat. */
+  var WARNA_S = { sayembara: "#008C83", ketua: "#C65A32" };
+  var NAMA_S = { sayembara: "Sayembara", ketua: "Ketua & Wakil" };
+  var SVGNS = "http://www.w3.org/2000/svg";
+  function sv2(tag, attrs, kids) {
+    var e = document.createElementNS(SVGNS, tag);
+    Object.keys(attrs || {}).forEach(function (k) { if (attrs[k] != null) e.setAttribute(k, attrs[k]); });
+    [].concat(kids || []).forEach(function (c) { if (c) e.appendChild(typeof c === "string" ? document.createTextNode(c) : c); });
+    return e;
+  }
+  var pct = function (a, b) { return b ? Math.round(a / b * 1000) / 10 : 0; };
+  var fmtPct = function (v) { return String(v).replace(".", ",") + "%"; };
+  var fmtJamW = new Intl.DateTimeFormat("id-ID", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZone: "Asia/Jakarta" });
+  var fmtHariW = new Intl.DateTimeFormat("id-ID", { weekday: "short", day: "numeric", timeZone: "Asia/Jakarta" });
+  var fmtTglW = new Intl.DateTimeFormat("id-ID", { weekday: "long", day: "numeric", month: "long", timeZone: "Asia/Jakarta" });
+  var fmtDetik = new Intl.DateTimeFormat("id-ID", { hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23", timeZone: "Asia/Jakarta" });
+
+  /* Satu tooltip untuk semua grafik: nilai di depan (tebal), keterangan di belakang. */
+  var TIP = null;
+  function tip() { if (!TIP || !document.body.contains(TIP)) { TIP = h("div", { class: "rk-tip", role: "tooltip", hidden: true }); document.body.appendChild(TIP); } return TIP; }
+  function tampilTip(baris, x, y) {
+    var t = tip(); clear(t);
+    baris.forEach(function (b) {
+      t.appendChild(h("div", { class: "rk-tip-r" }, [b.warna ? h("i", { class: "rk-key", style: "background:" + b.warna }) : null, h("b", { text: b.nilai }), b.ket ? h("span", { text: b.ket }) : null]));
+    });
+    t.hidden = false;
+    var w = t.offsetWidth, hh = t.offsetHeight;
+    var left = Math.min(Math.max(8, x + 14), innerWidth - w - 8), top = y - hh - 12;
+    if (top < 8) top = y + 18;
+    t.style.left = left + scrollX + "px"; t.style.top = top + scrollY + "px";
+  }
+  function sembunyiTip() { if (TIP) TIP.hidden = true; }
+  /* Tooltip hanya mengikuti gerakan kursor yang nyata; halaman yang bergulir di bawah kursor diam tidak memicunya. */
+  var gerakTerakhir = 0;
+  var posX = -1, posY = -1;
+  document.addEventListener("pointermove", function (e) {
+    if (e.pointerType === "touch" || Math.abs(e.clientX - posX) + Math.abs(e.clientY - posY) > 2) gerakTerakhir = Date.now();
+    posX = e.clientX; posY = e.clientY;
+  }, true);
+  document.addEventListener("keydown", function () { gerakTerakhir = 0; }, true);
+  document.addEventListener("focusin", function () { gerakTerakhir = 0; }, true);
+  document.addEventListener("pointerdown", function () { gerakTerakhir = Date.now(); }, true);
+  var kursorNyata = function () { return Date.now() - gerakTerakhir < 120; };
+  function pasangTip(el, isi) {
+    var tunjuk = function (e) { if (kursorNyata()) tampilTip(isi(), e.clientX, e.clientY); };
+    el.addEventListener("pointermove", tunjuk); el.addEventListener("pointerenter", tunjuk);
+    el.addEventListener("pointerleave", sembunyiTip); el.addEventListener("blur", sembunyiTip);
+    el.addEventListener("focus", function () { var r = el.getBoundingClientRect(); tampilTip(isi(), r.left + r.width / 2, r.top); });
+  }
+
+  /* Batang horizontal berperingkat: perolehan per karya / per pasangan. */
+  function grafikPerolehan(rows, surat) {
+    var total = rows.reduce(function (a, r) { return a + r.jumlah; }, 0);
+    var urut = rows.map(function (r, i) { return { r: r, i: i }; }).sort(function (a, b) { return b.r.jumlah - a.r.jumlah || a.i - b.i; }).map(function (x) { return x.r; });
+    var max = urut.length ? urut[0].jumlah : 0;
+    var unggul = urut.filter(function (r) { return max > 0 && r.jumlah === max; }).length;
+    if (!urut.length) return h("p", { class: "muted", text: "Belum ada pilihan yang tayang." });
+    return h("ol", { class: "rk-bars", "aria-label": "Perolehan suara " + NAMA_S[surat] }, urut.map(function (r) {
+      var p = pct(r.jumlah, total), lebar = max ? r.jumlah / max * 100 : 0;
+      var chip = max > 0 && r.jumlah === max ? h("span", { class: "rk-chip", text: unggul > 1 ? "Seri" : "Unggul" }) : null;
+      var li = h("li", { class: "rk-row", tabindex: "0", "aria-label": r.label + (r.sub ? " (" + r.sub + ")" : "") + ": " + r.jumlah + " suara, " + fmtPct(p) }, [
+        h("div", { class: "rk-lbl" }, [h("b", { text: r.label }), r.sub ? h("small", { text: r.sub }) : null, r.tayang === false ? h("small", { text: "disembunyikan" }) : null, chip]),
+        h("div", { class: "rk-track" }, h("i", { class: "rk-bar", style: "width:" + lebar + "%;background:" + WARNA_S[surat] })),
+        h("span", { class: "rk-val" }, [h("b", { text: String(r.jumlah) }), h("span", { text: fmtPct(p) })])
+      ]);
+      pasangTip(li, function () {
+        var beda = max - r.jumlah;
+        return [{ warna: WARNA_S[surat], nilai: r.jumlah + " suara", ket: r.label },
+          { nilai: fmtPct(p), ket: "dari " + total + " suara masuk" + (beda > 0 ? " · tertinggal " + beda : "") }];
+      });
+      return li;
+    }));
+  }
+
+  /* Partisipasi per kelas: dua batang tipis per kelas, skala = % dari pemilih terdaftar. */
+  function grafikKelas(list) {
+    return h("div", null, [
+      legenda(["sayembara", "ketua"], "rect"),
+      h("ul", { class: "rk-kelas", "aria-label": "Partisipasi per kelas" }, list.map(function (k) {
+        return h("li", { class: "rk-k" }, [
+          h("div", { class: "rk-lbl" }, [h("b", { text: k.label }), h("small", { text: k.terdaftar + " pemilih" })]),
+          h("div", { class: "rk-k-bars" }, ["sayembara", "ketua"].map(function (s) {
+            var p = pct(k[s], k.terdaftar);
+            var row = h("div", { class: "rk-k-row", tabindex: "0", "aria-label": k.label + ", " + NAMA_S[s] + ": " + k[s] + " dari " + k.terdaftar + " (" + fmtPct(p) + ")" }, [
+              h("div", { class: "rk-track thin" }, h("i", { class: "rk-bar", style: "width:" + Math.min(100, p) + "%;background:" + WARNA_S[s] })),
+              h("span", { class: "rk-val" }, [h("b", { text: fmtPct(p) }), h("span", { text: k[s] + "/" + k.terdaftar })])
+            ]);
+            pasangTip(row, function () { return [{ warna: WARNA_S[s], nilai: fmtPct(p), ket: NAMA_S[s] + " · " + k.label }, { nilai: k[s] + " dari " + k.terdaftar, ket: "pemilih sudah memilih" }]; });
+            return row;
+          }))
+        ]);
+      }))
+    ]);
+  }
+
+  function legenda(seri, bentuk) {
+    return h("div", { class: "rk-legend" }, seri.map(function (s) {
+      return h("span", null, [h("i", { class: "rk-key" + (bentuk === "line" ? " line" : ""), style: "background:" + WARNA_S[s] }), NAMA_S[s]]);
+    }));
+  }
+
+  /* Suara masuk dari waktu ke waktu: garis kumulatif per jam, crosshair + tooltip. */
+  function grafikWaktu(box, d) {
+    clear(box);
+    var JAM = 3600000, mulai = Math.floor(new Date(d.buka).getTime() / JAM) * JAM;
+    var akhir = Math.min(new Date(d.sekarang).getTime(), new Date(d.tutup).getTime());
+    if (akhir <= mulai) { box.appendChild(h("p", { class: "muted", text: "Voting belum dibuka. Grafik muncul setelah suara pertama masuk." })); return; }
+    var n = Math.floor((akhir - mulai) / JAM) + 1, idx = {};
+    (d.per_jam || []).forEach(function (r) { idx[Math.floor(new Date(r.jam).getTime() / JAM) * JAM] = r; });
+    var titik = [], cs = 0, ck = 0;
+    for (var i = 0; i < n; i++) {
+      var t = mulai + i * JAM, r = idx[t];
+      cs += r ? r.sayembara : 0; ck += r ? r.ketua : 0;
+      titik.push({ t: t, sayembara: cs, ketua: ck, ms: r ? r.sayembara : 0, mk: r ? r.ketua : 0 });
+    }
+    var W = Math.max(280, box.clientWidth || 600), H = 230, ml = 40, mr = 44, mt = 14, mb = 28;
+    var pw = W - ml - mr, ph = H - mt - mb;
+    var ymax = Math.max(4, cs, ck), langkah = Math.pow(10, Math.floor(Math.log10(ymax / 4)));
+    [1, 2, 5, 10].some(function (m) { if (ymax / (langkah * m) <= 4) { langkah *= m; return true; } return false; });
+    ymax = Math.ceil(ymax / langkah) * langkah;
+    var X = function (i) { return ml + (n === 1 ? pw / 2 : i / (n - 1) * pw); }, Y = function (v) { return mt + ph - v / ymax * ph; };
+    var svg = sv2("svg", { class: "rk-svg", width: W, height: H, viewBox: "0 0 " + W + " " + H, role: "img", "aria-label": "Suara masuk kumulatif per jam. Sayembara " + cs + ", ketua " + ck + ".", tabindex: "0" });
+    for (var v = 0; v <= ymax; v += langkah) {
+      svg.appendChild(sv2("line", { class: "rk-grid", x1: ml, x2: W - mr, y1: Y(v), y2: Y(v) }));
+      svg.appendChild(sv2("text", { class: "rk-ax", x: ml - 8, y: Y(v) + 4, "text-anchor": "end" }, String(v)));
+    }
+    // penanda hari (00.00 WIB); label dijarangkan bila sempit
+    var hari = titik.filter(function (p) { return (p.t + 7 * JAM) % (24 * JAM) === 0; });
+    var tiap = Math.max(1, Math.ceil(hari.length * 56 / pw));
+    hari.forEach(function (p, k) {
+      var x = X((p.t - mulai) / JAM);
+      svg.appendChild(sv2("line", { class: "rk-tick", x1: x, x2: x, y1: mt + ph, y2: mt + ph + 5 }));
+      if (k % tiap === 0) svg.appendChild(sv2("text", { class: "rk-ax", x: x, y: H - 8, "text-anchor": "middle" }, fmtHariW.format(new Date(p.t))));
+    });
+    svg.appendChild(sv2("line", { class: "rk-base", x1: ml, x2: W - mr, y1: mt + ph, y2: mt + ph }));
+    ["ketua", "sayembara"].forEach(function (s) {
+      var dpath = titik.map(function (p, i) { return (i ? "L" : "M") + X(i).toFixed(1) + "," + Y(p[s]).toFixed(1); }).join("");
+      svg.appendChild(sv2("path", { class: "rk-line", d: dpath, stroke: WARNA_S[s] }));
+    });
+    // label nilai akhir langsung di ujung garis (digeser bila bertumpuk)
+    var ya = Y(cs), yb = Y(ck);
+    if (Math.abs(ya - yb) < 14) { if (ya <= yb) { ya -= 7; yb += 7; } else { ya += 7; yb -= 7; } }
+    svg.appendChild(sv2("text", { class: "rk-end", x: X(n - 1) + 6, y: ya + 4 }, String(cs)));
+    svg.appendChild(sv2("text", { class: "rk-end", x: X(n - 1) + 6, y: yb + 4 }, String(ck)));
+    // lapisan crosshair
+    var hair = sv2("line", { class: "rk-hair", x1: 0, x2: 0, y1: mt, y2: mt + ph, visibility: "hidden" });
+    var dot = { sayembara: sv2("circle", { r: 4.5, fill: WARNA_S.sayembara, class: "rk-dot", visibility: "hidden" }), ketua: sv2("circle", { r: 4.5, fill: WARNA_S.ketua, class: "rk-dot", visibility: "hidden" }) };
+    svg.appendChild(hair); svg.appendChild(dot.ketua); svg.appendChild(dot.sayembara);
+    var hit = sv2("rect", { x: ml, y: mt, width: pw, height: ph, fill: "transparent" });
+    svg.appendChild(hit);
+    var aktif = n - 1;
+    function tunjuk(i, cx, cy) {
+      aktif = Math.max(0, Math.min(n - 1, i));
+      var p = titik[aktif], x = X(aktif);
+      hair.setAttribute("x1", x); hair.setAttribute("x2", x); hair.setAttribute("visibility", "visible");
+      ["sayembara", "ketua"].forEach(function (s) { dot[s].setAttribute("cx", x); dot[s].setAttribute("cy", Y(p[s])); dot[s].setAttribute("visibility", "visible"); });
+      var r = svg.getBoundingClientRect();
+      tampilTip([{ nilai: fmtJamW.format(new Date(p.t)) + " WIB" },
+        { warna: WARNA_S.sayembara, nilai: String(p.sayembara), ket: "Sayembara" + (p.ms ? " (+" + p.ms + " jam ini)" : "") },
+        { warna: WARNA_S.ketua, nilai: String(p.ketua), ket: "Ketua & Wakil" + (p.mk ? " (+" + p.mk + " jam ini)" : "") }],
+        cx != null ? cx : r.left + x, cy != null ? cy : r.top + mt);
+    }
+    function lepas() { hair.setAttribute("visibility", "hidden"); dot.sayembara.setAttribute("visibility", "hidden"); dot.ketua.setAttribute("visibility", "hidden"); sembunyiTip(); }
+    svg.addEventListener("pointermove", function (e) {
+      if (!kursorNyata()) return;
+      var r = svg.getBoundingClientRect(), x = (e.clientX - r.left) * (W / r.width);
+      tunjuk(Math.round(n === 1 ? 0 : (x - ml) / pw * (n - 1)), e.clientX, e.clientY);
+    });
+    svg.addEventListener("pointerleave", lepas);
+    svg.addEventListener("focus", function () { tunjuk(aktif); });
+    svg.addEventListener("blur", lepas);
+    svg.addEventListener("keydown", function (e) {
+      var k = { ArrowLeft: -1, ArrowRight: 1, Home: -1e9, End: 1e9 }[e.key];
+      if (k == null) return; e.preventDefault(); tunjuk(aktif + k);
+    });
+    box.appendChild(svg);
+  }
+
+  function tabelHarian(d) {
+    var per = {};
+    (d.per_jam || []).forEach(function (r) {
+      var k = sv.format(new Date(r.jam)).slice(0, 10);
+      per[k] = per[k] || { t: r.jam, s: 0, k: 0 }; per[k].s += r.sayembara; per[k].k += r.ketua;
+    });
+    var cs = 0, ck = 0;
+    var baris = Object.keys(per).sort().map(function (k) { var x = per[k]; cs += x.s; ck += x.k; return [fmtTglW.format(new Date(x.t)), x.s, x.k, cs, ck]; });
+    return tabel([{ t: "Hari" }, { t: "Sayembara masuk", num: true }, { t: "Ketua masuk", num: true }, { t: "Total sayembara", num: true }, { t: "Total ketua", num: true }], baris, { kosong: "Belum ada suara masuk." });
+  }
+
   function vAuditor(masihAktif) {
     clear(panel);
     panel.appendChild(h("h1", { class: "h2", text: "Auditor" }));
+    var dash = h("section", { class: "rk", "aria-labelledby": "rk-h" });
+    panel.appendChild(dash);
+
+    var data = null, wadahWaktu = null;
+    function gambar(d) {
+      sembunyiTip();
+      data = d; clear(dash);
+      var faseTxt = { sebelum: "Belum dibuka", buka: "Voting dibuka", tutup: "Voting ditutup", dijeda: "Dijeda" }[d.fase] || d.fase;
+      dash.appendChild(h("div", { class: "rk-head" }, [
+        h("h2", { id: "rk-h", class: "rk-title", text: "Rekap langsung" }),
+        h("span", { class: "pill " + (d.fase === "buka" ? "on" : ""), text: faseTxt }),
+        h("span", { class: "mono muted rk-upd", id: "rk-upd", text: "Diperbarui " + fmtDetik.format(new Date(d.sekarang)) + " WIB · otomatis tiap 30 detik" }),
+        h("button", { type: "button", class: "btn alt btn-s", id: "rk-refresh", text: "Perbarui", onclick: function () { muat(); } })
+      ]));
+      dash.appendChild(h("p", { class: "adm-note warn-n", text: "Rahasia sampai hasil dibuka untuk publik (" + fmtW(d.hasil_at) + " WIB). Jangan dibagikan atau ditampilkan ke peserta." }));
+      var tile = function (angka, label, sub, id) { return h("div", { class: "stat", id: id }, [h("b", { text: angka }), h("span", { text: label }), sub ? h("small", { class: "rk-sub", text: sub }) : null]); };
+      var jamIni = (d.per_jam || []).filter(function (r) { return new Date(d.sekarang) - new Date(r.jam) < 3600000; }).reduce(function (a, r) { return a + r.sayembara + r.ketua; }, 0);
+      dash.appendChild(h("div", { class: "adm-grid rk-tiles" }, [
+        tile(String(d.memilih_salah_satu), "Sudah memilih", fmtPct(pct(d.memilih_salah_satu, d.total_pemilih)) + " dari " + d.total_pemilih + " pemilih", "rk-t-semua"),
+        tile(String(d.memilih_sayembara), "Suara sayembara", fmtPct(pct(d.memilih_sayembara, d.total_pemilih)) + " partisipasi", "rk-t-s"),
+        tile(String(d.memilih_ketua), "Suara ketua", fmtPct(pct(d.memilih_ketua, d.total_pemilih)) + " partisipasi", "rk-t-k"),
+        tile(String(jamIni), "Masuk 1 jam terakhir", "dua surat suara digabung", "rk-t-jam")
+      ]));
+      dash.appendChild(h("div", { class: "rk-pair" }, [
+        h("article", { class: "rk-card", id: "rk-sayembara" }, [h("h3", null, [h("i", { class: "rk-key", style: "background:" + WARNA_S.sayembara }), "Sayembara identitas"]),
+          h("p", { class: "muted rk-cap", text: d.memilih_sayembara + " suara masuk. Panjang batang relatif terhadap yang unggul." }), grafikPerolehan(d.sayembara, "sayembara")]),
+        h("article", { class: "rk-card", id: "rk-ketua" }, [h("h3", null, [h("i", { class: "rk-key", style: "background:" + WARNA_S.ketua }), "Ketua & Wakil"]),
+          h("p", { class: "muted rk-cap", text: d.memilih_ketua + " suara masuk. Panjang batang relatif terhadap yang unggul." }), grafikPerolehan(d.ketua, "ketua")])
+      ]));
+      wadahWaktu = h("div", { class: "rk-time" });
+      dash.appendChild(h("article", { class: "rk-card", id: "rk-waktu" }, [h("h3", { text: "Suara masuk dari waktu ke waktu" }),
+        h("p", { class: "muted rk-cap", text: "Jumlah kumulatif per jam sejak voting dibuka. Arahkan kursor atau gunakan panah kiri/kanan untuk melihat angka tiap jam." }),
+        legenda(["sayembara", "ketua"], "line"), wadahWaktu,
+        h("details", { class: "rk-det" }, [h("summary", { text: "Lihat data per hari" }), tabelHarian(d)])]));
+      grafikWaktu(wadahWaktu, d);
+      dash.appendChild(h("article", { class: "rk-card", id: "rk-kelas" }, [h("h3", { text: "Partisipasi per kelas" }),
+        h("p", { class: "muted rk-cap", text: "Persentase pemilih terdaftar di tiap kelas yang sudah memberi suara." }), grafikKelas(d.per_kelas)]));
+    }
+    function muat() {
+      dash.classList.add("rk-loading");
+      return rpc("auditor_rekap").then(function (x) {
+        if (!masihAktif()) return;
+        dash.classList.remove("rk-loading");
+        if (x.error) {
+          if (!data) { clear(dash); dash.appendChild(h("p", { class: "form-err", text: /auditor_rekap/.test(x.error.message || "") && /find|exist|schema/i.test(x.error.message || "") ? "Fungsi rekap belum ada di database. Jalankan ulang supabase/schema.sql di SQL Editor." : galat(x.error) })); }
+          else if ($("rk-upd")) $("rk-upd").textContent = "Gagal memperbarui: " + galat(x.error);
+          return;
+        }
+        gambar(x.data);
+      });
+    }
+    var lebar = innerWidth;
+    var onResize = function () { if (!masihAktif()) { removeEventListener("resize", onResize); return; } if (data && wadahWaktu && Math.abs(innerWidth - lebar) > 20) { lebar = innerWidth; grafikWaktu(wadahWaktu, data); } };
+    addEventListener("resize", onResize);
+    // Pembaruan otomatis ditunda selama grafik sedang disorot/difokus agar tooltip tidak hilang di tengah jalan.
+    timer = setInterval(function () {
+      if (document.hidden || !masihAktif()) return;
+      if (dash.contains(document.activeElement) || dash.matches(":hover")) return;
+      muat();
+    }, 30000);
+
+    panel.appendChild(h("h2", { class: "rk-title rk-sep", text: "Daftar suara per NIM" }));
     panel.appendChild(h("p", { class: "adm-note warn-n", text: "Daftar ini memperlihatkan siapa memilih siapa. Gunakan hanya untuk menyelesaikan sengketa. Setiap pembukaan dicatat di Log dengan nama akun Anda." }));
     var nim = h("input", { class: "adm-input", id: "a-nim", placeholder: "NIM (kosongkan untuk semua suara)", "aria-label": "NIM", style: "max-width:320px" });
     var hasil = h("div", { role: "status" });
@@ -658,6 +909,7 @@
     } });
     panel.appendChild(h("div", { class: "row" }, [nim, go]));
     panel.appendChild(hasil);
+    return muat();
   }
 
   /* ---------- Log ---------- */

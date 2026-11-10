@@ -596,6 +596,50 @@ begin
   return hasil;
 end $$;
 
+-- Dashboard rekap untuk auditor: perolehan per karya & calon, partisipasi per kelas,
+-- dan suara masuk per jam. Hanya auditor. Pembukaan dicatat ke log paling banyak
+-- sekali per 30 menit per akun (dashboard memperbarui diri tiap 30 detik).
+create or replace function auditor_rekap() returns jsonb
+language plpgsql security definer set search_path = public, pg_temp as $$
+declare p pengaturan%rowtype; v_aktor text := aktor_saat_ini();
+begin
+  if not is_auditor() then
+    raise exception 'akses_ditolak' using errcode = '42501';
+  end if;
+  select * into p from pengaturan where id = 1;
+  if not exists (select 1 from log_audit where log_audit.aktor = v_aktor and aksi = 'auditor.lihat_rekap' and waktu > now() - interval '30 minutes') then
+    insert into log_audit (aktor, aksi, detail) values (v_aktor, 'auditor.lihat_rekap', '{}'::jsonb);
+  end if;
+  return jsonb_build_object(
+    'sekarang', now(), 'fase', _fase(), 'buka', p.buka_at, 'tutup', p.tutup_at, 'hasil_at', p.hasil_at,
+    'total_pemilih', (select count(*) from pemilih),
+    'memilih_sayembara', (select count(*) from suara_karya),
+    'memilih_ketua', (select count(*) from suara_calon),
+    'memilih_salah_satu', (select count(*) from (select nim from suara_karya union select nim from suara_calon) x),
+    'sayembara', coalesce((
+      select jsonb_agg(jsonb_build_object('id', k.id, 'label', k.nama_angkatan, 'sub', k.kelompok, 'tayang', k.tayang,
+        'jumlah', (select count(*) from suara_karya s where s.karya_id = k.id)) order by k.urut, k.dibuat)
+      from karya k where k.tayang or exists (select 1 from suara_karya s where s.karya_id = k.id)), '[]'::jsonb),
+    'ketua', coalesce((
+      select jsonb_agg(jsonb_build_object('id', c.id, 'label', c.ketua || ' & ' || c.wakil, 'sub', null, 'tayang', c.tayang,
+        'jumlah', (select count(*) from suara_calon s where s.calon_id = c.id)) order by c.urut, c.dibuat)
+      from calon c where c.tayang or exists (select 1 from suara_calon s where s.calon_id = c.id)), '[]'::jsonb),
+    'per_kelas', coalesce((
+      select jsonb_agg(jsonb_build_object('kode', k.kode, 'label', k.label,
+        'terdaftar', (select count(*) from pemilih x where x.kelas = k.kode),
+        'sayembara', (select count(*) from suara_karya s join pemilih x on x.nim = s.nim where x.kelas = k.kode),
+        'ketua', (select count(*) from suara_calon s join pemilih x on x.nim = s.nim where x.kelas = k.kode)) order by k.urut, k.kode)
+      from kelas k), '[]'::jsonb),
+    'per_jam', coalesce((
+      select jsonb_agg(jsonb_build_object('jam', jam, 'sayembara', sk, 'ketua', sc) order by jam) from (
+        select jam, sum(sk)::int sk, sum(sc)::int sc from (
+          select date_trunc('hour', waktu) jam, 1 sk, 0 sc from suara_karya
+          union all
+          select date_trunc('hour', waktu), 0, 1 from suara_calon) u
+        group by jam) j), '[]'::jsonb)
+  );
+end $$;
+
 -- ---------------------------------------------------------------------
 -- 5. PENCATATAN PERUBAHAN KONTEN (karya, calon, dokumentasi, rundown, pemateri, pengaturan)
 -- ---------------------------------------------------------------------
@@ -702,6 +746,7 @@ grant execute on function admin_buka_kunci(text)                  to authenticat
 grant execute on function admin_atur(timestamptz, timestamptz, timestamptz, boolean) to authenticated;
 grant execute on function admin_atur_acara(timestamptz, timestamptz, text) to authenticated;
 grant execute on function auditor_suara(text)                     to authenticated;
+grant execute on function auditor_rekap()                        to authenticated;
 
 -- =====================================================================
 -- 7. PENYIMPANAN FOTO (Supabase Storage, bucket publik "narasi")
