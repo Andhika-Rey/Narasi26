@@ -111,18 +111,6 @@ textarea.adm-input { min-height: 160px; font-family: var(--font-mono); resize: v
 .rk-k-row { display: grid; grid-template-columns: minmax(0, 1fr) 112px; gap: 10px; align-items: center; padding: 2px 4px; border-radius: 4px; }
 .rk-k-row .rk-val { justify-content: flex-end; }
 .rk-k-row .rk-val b { font-size: .92rem; }
-.rk-time { width: 100%; overflow: hidden; }
-.rk-svg { display: block; max-width: 100%; touch-action: pan-y; outline-offset: 3px; }
-.rk-grid { stroke: var(--fg); stroke-opacity: .12; stroke-width: 1; }
-.rk-base { stroke: var(--fg); stroke-opacity: .5; stroke-width: 1; }
-.rk-tick { stroke: var(--fg); stroke-opacity: .4; }
-.rk-ax { fill: var(--muted); font: 500 11px var(--font-mono); }
-.rk-end { fill: var(--fg); font: 700 12px var(--font-body); }
-.rk-line { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
-.rk-hair { stroke: var(--fg); stroke-opacity: .45; stroke-width: 1; }
-.rk-dot { stroke: var(--bg); stroke-width: 2; }
-.rk-det { margin-top: 12px; }
-.rk-det summary { cursor: pointer; font-weight: 700; font-size: .9rem; margin-bottom: 8px; }
 .rk-tip { position: absolute; z-index: 60; pointer-events: none; max-width: 260px; padding: 8px 10px; border: 2px solid var(--edge); border-radius: 6px; background: var(--surface); color: var(--fg); box-shadow: 3px 3px 0 var(--shadow); font-size: .82rem; display: grid; gap: 3px; }
 .rk-tip[hidden] { display: none; }
 .rk-tip-r { display: grid; grid-template-columns: auto auto minmax(0, 1fr); align-items: baseline; gap: 2px 6px; }

@@ -7,16 +7,12 @@
 <meta name="description" content="NARASI 2026: Imajinasi untuk Lorong Waktu. Sayembara identitas, pemilihan ketua, dan mini seminar Bisnis Digital angkatan 2026, Cakrawala University.">
 <meta name="theme-color" content="#F1E3C5" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#241D19" media="(prefers-color-scheme: dark)">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https://*.supabase.co https://i.ytimg.com; frame-src https://www.youtube-nocookie.com; connect-src 'self' https://*.supabase.co https://vitals.vercel-insights.com; base-uri 'self'; form-action 'self'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https://*.supabase.co https://i.ytimg.com; frame-src https://www.youtube-nocookie.com; connect-src 'self' https://*.supabase.co; base-uri 'self'; form-action 'self'; object-src 'none'">
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <link rel="icon" href="img/favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;700&family=Bowlby+One&family=IBM+Plex+Mono:wght@400;500;700&display=swap" rel="stylesheet">
-<script>
-  window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
-</script>
-<script defer src="/_vercel/insights/script.js"></script>
 <script src="js/motion-pre.js"></script>
 <link rel="stylesheet" href="css/narasi.css">
 <link rel="stylesheet" href="css/pages.css">
@@ -46,12 +42,6 @@
       <p class="lead acara-info" id="acara-info">Puncak acara <b data-acara="tanggal">Jumat, 13 November 2026</b><span class="sep" aria-hidden="true"> · </span><span data-acara="jam">13.00–16.00 WIB</span><span class="sep" aria-hidden="true"> · </span><span data-acara="lokasi">Perpustakaan Kampus Sudirman</span></p>
       <div class="cta">
         <a class="btn" href="about/#rundown">Lihat rundown</a>
-      </div>
-      <div class="cd" role="timer" aria-label="Hitung mundur menuju puncak acara">
-        <div><b id="cd-d">00</b><span>Hari</span></div>
-        <div><b id="cd-h">00</b><span>Jam</span></div>
-        <div><b id="cd-m">00</b><span>Menit</span></div>
-        <div><b id="cd-s">00</b><span>Detik</span></div>
       </div>
     </div>
 
@@ -104,6 +94,37 @@
           <a class="cell acro-link" href="about/#k-ketua" style="--c: var(--red)"><span class="big">sI</span><span class="word">pem<em>I</em>lihan ketua</span><span class="acro-d">Pemilihan Ketua dan Wakil Ketua Angkatan lewat voting online.</span><span class="go mono" aria-hidden="true">Buka &gt;</span></a>
         </div>
         <p class="row"><a class="btn alt" href="about/">Timeline, rundown, dan materi</a></p>
+      </div>
+    </section>
+
+    <section class="win" id="seminar" style="--tab: var(--orange)" aria-labelledby="h-seminar">
+      <div class="win-bar"><span class="tab"></span><span class="name">mini_seminar.exe</span><span class="ctl" aria-hidden="true"><b>_</b><b>□</b><b>×</b></span></div>
+      <div class="win-body">
+        <h2 id="h-seminar">Mini Seminar</h2>
+        <p class="mono cd-cap" id="cd-cap">Hitung mundur menuju puncak acara</p>
+        <div class="cd" role="timer" aria-label="Hitung mundur menuju puncak acara">
+          <div><b id="cd-d">00</b><span>Hari</span></div>
+          <div><b id="cd-h">00</b><span>Jam</span></div>
+          <div><b id="cd-m">00</b><span>Menit</span></div>
+          <div><b id="cd-s">00</b><span>Detik</span></div>
+        </div>
+        <h3 class="sub">Tiga pemateri</h3>
+        <div class="spks spks-mini" id="spk-list">
+          <article class="spk" style="--c: var(--orange)"><div class="spk-ph"><b class="spk-no mono" title="Pemateri 1 di rundown">01</b><span class="spk-av" aria-hidden="true">FM</span></div><div class="spk-tx"><h3>Farid Maulana Yusuf</h3><p class="spk-topic">Framework POLA: Presence, Observation, Learning, Action</p></div></article>
+          <article class="spk" style="--c: var(--teal)"><div class="spk-ph"><b class="spk-no mono" title="Pemateri 2 di rundown">02</b><span class="spk-av" aria-hidden="true">WD</span></div><div class="spk-tx"><h3>Wahyu Daffa Mumtazsyah</h3><p class="spk-topic">Personal Branding: Managing Public Expectations</p></div></article>
+          <article class="spk" style="--c: var(--red)"><div class="spk-ph"><b class="spk-no mono" title="Pemateri 3 di rundown">03</b><span class="spk-av" aria-hidden="true">RD</span></div><div class="spk-tx"><h3>Regina Diya Azzahra</h3><p class="spk-topic">Personal Branding: Value to Impact</p></div></article>
+        </div>
+        <p class="row"><a class="btn alt" href="about/#seminar">Materi dan rundown</a></p>
+      </div>
+    </section>
+
+    <section class="win" id="sayembara-ringkas" style="--tab: var(--teal)" aria-labelledby="h-sy">
+      <div class="win-bar"><span class="tab"></span><span class="name">sayembara.mp4</span><span class="ctl" aria-hidden="true"><b>_</b><b>□</b><b>×</b></span></div>
+      <div class="win-body">
+        <h2 id="h-sy">Sayembara Identitas</h2>
+        <p id="sy-p">Paket nama, logo, slogan, bendera, dan video dari peserta.</p>
+        <div id="home-karya"></div>
+        <p class="row" id="sy-aksi"><a class="btn" href="voting/#galeri">Galeri lengkap</a><a class="btn alt" href="voting/#hasil" id="sy-hasil" hidden>Hasil lengkap</a></p>
       </div>
     </section>
 

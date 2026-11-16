@@ -590,6 +590,48 @@
     box.classList.add("ready");
   }
 
+  /* ===================== Home: karya sayembara ringkas (+ juara bila hasil terbuka) ===================== */
+  function renderKaryaHome() {
+    var box = $("home-karya"); if (!box) return;
+    var st = S.status, hs = S.hasil;
+    var key = st ? JSON.stringify([st.karya, hs && hs.sayembara, st.hasil_terbuka, st.hasil_at]) : "x" + (S.error ? "e" : "");
+    if (key === S.karyaKey) return;
+    S.karyaKey = key;
+    clear(box);
+    var p = $("sy-p"), btn = $("sy-hasil");
+    if (btn) btn.hidden = !hs;
+    if (!st) { box.appendChild(nosignal("Belum ada sinyal", sb && !S.error ? "Memuat karya." : "Karya belum tersedia.")); return; }
+    if (p) p.textContent = hs ? "Juara sayembara menurut suara angkatan. Ketuk karya untuk melihat paket lengkapnya."
+      : "Karya peserta. Pemenang diumumkan " + fmtPendek(st.hasil_at) + ".";
+    if (!st.karya.length) { box.appendChild(nosignal("Belum ada sinyal", "Paket nama, logo, slogan, bendera, dan video muncul di sini saat dipublikasikan.")); return; }
+    var rank = {};
+    if (hs) hs.sayembara.forEach(function (r) { rank[r.id] = r; });
+    var list = st.karya.slice();
+    if (hs) list.sort(function (a, b) { return (rank[a.id] ? rank[a.id].peringkat : 99) - (rank[b.id] ? rank[b.id].peringkat : 99); });
+    box.appendChild(h("div", { class: "kstrip" }, list.map(function (k) {
+      var r = rank[k.id], u = fotoUrl((k.foto || [])[0]);
+      var juara = r && r.peringkat <= 3 ? r.peringkat : 0;
+      return h("a", { class: "kcard" + (juara ? " juara j" + juara : ""), href: "voting/#galeri" }, [
+        h("span", { class: "kc-ph" }, [
+          u ? h("img", { src: u, alt: "Karya " + k.nama, loading: "lazy", decoding: "async" }) : h("span", { class: "kc-av", "aria-hidden": "true", text: inisial(k.nama) }),
+          juara ? h("b", { class: "kc-badge mono", text: "Juara " + juara + (r.seri ? " (seri)" : "") }) : null
+        ]),
+        h("span", { class: "kc-tx" }, [
+          h("b", { text: k.nama }), h("span", { class: "mono muted", text: k.kelompok }),
+          r ? h("span", { class: "kc-n mono", text: r.jumlah + " suara" }) : null
+        ])
+      ]);
+    })));
+  }
+  function muatHasilHome() {
+    if (PAGE !== "home" || S.hasilHome || !S.status || !S.status.hasil_terbuka) return;
+    S.hasilHome = true;
+    rpc("hasil_publik").then(function (r) {
+      if (r.error || !r.data || !r.data.terbuka) { S.hasilHome = false; return; }
+      S.hasil = r.data; renderKaryaHome();
+    });
+  }
+
   /* ===================== Home: portal lorong waktu (ketuk) ===================== */
   (function () {
     var btn = $("portal-btn"), toast = $("portal-toast"); if (!btn) return;
@@ -612,7 +654,12 @@
   /* ===================== Home: hitung mundur ===================== */
   function tickHome(now) {
     if (!$("cd-d")) return;
-    var s = Math.max(0, Math.floor((T(acara().mulai) - now) / 1000));
+    var a = acara(), s = Math.max(0, Math.floor((T(a.mulai) - now) / 1000));
+    var cap = $("cd-cap");
+    if (cap) {
+      var t = now < T(a.mulai) ? "Hitung mundur menuju puncak acara" : now < T(a.selesai) ? "Puncak acara sedang berlangsung" : "Puncak acara sudah selesai";
+      if (cap.textContent !== t) cap.textContent = t;
+    }
     $("cd-d").textContent = pad(Math.floor(s / 86400));
     $("cd-h").textContent = pad(Math.floor(s % 86400 / 3600));
     $("cd-m").textContent = pad(Math.floor(s % 3600 / 60));
@@ -753,10 +800,10 @@
   function muatStatus() {
     S.lastLoad = Date.now();
     return rpc("status_publik").then(function (r) {
-      if (r.error || !r.data) { S.error = true; renderGaleri(); renderVote(); renderDok(); return; }
+      if (r.error || !r.data) { S.error = true; renderGaleri(); renderKaryaHome(); renderVote(); renderDok(); return; }
       S.error = false; S.status = r.data;
       S.offset = new Date(r.data.sekarang).getTime() - Date.now();
-      renderGaleri(); renderVote(); renderFase(); renderDok(); renderAcara(); renderPemateri(); renderTimeline(); renderRundown(); tickHome(nowMs()); muatHasil();
+      renderGaleri(); renderKaryaHome(); renderVote(); renderFase(); renderDok(); renderAcara(); renderPemateri(); renderTimeline(); renderRundown(); tickHome(nowMs()); muatHasil(); muatHasilHome();
     });
   }
 
@@ -774,7 +821,7 @@
   }
 
   /* ===================== Mulai ===================== */
-  renderAcara(); renderTimeline(); renderRundown(); renderGaleri(); renderVote(); renderDok(); tick();
+  renderAcara(); renderTimeline(); renderRundown(); renderGaleri(); renderKaryaHome(); renderVote(); renderDok(); tick();
   setInterval(tick, 1000);
   if ($("tl-list") || $("run-list")) setInterval(function () { renderTimeline(); renderRundown(); }, 30000);
   if (sb && PAGE) {

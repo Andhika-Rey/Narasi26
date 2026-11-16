@@ -48,7 +48,7 @@ Hanya anon key. **Jangan pernah** menaruh `service_role` di sini.
 Unggah folder ini ke GitHub lalu hubungkan ke Cloudflare Pages / Netlify / Vercel (build command kosong, output directory `/`). Jika memakai domain kustom untuk Supabase, tambahkan domain itu ke `connect-src` pada tag CSP di `index.html`, `about/index.html`, `voting/index.html`, `kontak/index.html`, dan `admin.html`.
 
 ### 4. Isi data (panel `/admin.html`)
-1. **Pemilih** → pilih kelas → tempel daftar (satu baris: `NIM` atau `NIM, Nama`) → Impor.
+1. Daftar pemilih tidak lagi dikelola dari panel (tab Pemilih sudah dihapus). Tabel `pemilih` tetap ada di database karena dipakai untuk memeriksa NIM saat memilih.
 2. **Karya** → isi nama, unggah foto (boleh banyak; otomatis diperkecil), tempel tautan **YouTube** untuk video (diputar langsung di situs; unggah videonya ke YouTube dulu, mode *Unlisted* cukup). **Calon** → unggah foto Ketua dan Wakil; otomatis dipotong ke rasio 4:5 dari tengah gambar. Centang *Tayang* agar tampil dan bisa dipilih.
    **Acara** → tanggal, jam mulai–selesai, dan lokasi puncak acara (dipakai hitung mundur di Home, info hari-H, FAQ) serta seluruh baris rundown: ubah, tambah, atau hapus; urutan otomatis mengikuti jam.
    **Pemateri** → nama, judul materi, dan foto (otomatis dipotong 4:5). Kartu di About hanya menampilkan foto, nama, dan judul; nomornya sama dengan urutan "Pemateri 1/2/3" di rundown.
@@ -65,7 +65,7 @@ Buka `supabase/reset.sql`, jalankan blok yang dibutuhkan (A: semua suara, B: cal
 
 ## Cara kerja & batasan (baca ini)
 
-- Pemilih memasukkan **NIM + kelas**; harus ada di daftar pemilih. NIM bisa ditebak teman, jadi ada pembatasan percobaan (gagal berulang per IP, per NIM, dan global mengunci 15 menit; panitia membuka kunci di tab Pemilih) dan semua tercatat. Ini pencegah, bukan jaminan mutlak. Jika perlu lebih ketat, tambahkan kode unik per pemilih.
+- Pemilih memasukkan **NIM + kelas**; harus ada di daftar pemilih. NIM bisa ditebak teman, jadi ada pembatasan percobaan (gagal berulang per IP, per NIM, dan global mengunci 15 menit; panitia membuka kunci di tab Ringkasan) dan semua tercatat. Ini pencegah, bukan jaminan mutlak. Jika perlu lebih ketat, tambahkan kode unik per pemilih.
 - Satu NIM = satu suara per surat (sayembara, ketua). Suara final. Boleh memilih satu surat saja.
 - Tab **Auditor** berisi dashboard **Rekap langsung**: perolehan tiap karya dan pasangan calon, suara masuk per jam, dan partisipasi per kelas; diperbarui otomatis tiap 30 detik. Hanya akun auditor yang bisa membukanya, dan pembukaannya tercatat di Log (sekali per 30 menit). Rekap ini rahasia sampai hasil dibuka untuk publik.
 - Suara disimpan **beserta NIM**. Hanya akun auditor yang bisa melihatnya, dan setiap akses tercatat di Log dengan nama akun. Auditor dapat melihat suara sebelum hasil dibuka; beri tahu peserta.
